@@ -4,6 +4,7 @@
 #include <fstream>
 #include <vector>
 #include <tuple>
+#include <generator>
 
 #include <MyakishLibrary/Meta/Functions.hpp>
 #include <MyakishLibrary/Core.hpp>
@@ -63,5 +64,18 @@ namespace myakish
     auto SliceTuple(Tuple&& tuple)
     {
         return detail::SliceTuple(std::forward<Tuple>(tuple), std::make_index_sequence<First>{}, std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<Tuple>> - First>{});
+    }
+
+    template<std::integral Number>
+    std::generator<bool> CollatzWeylPRNG(Number x, Number weyl, Number s)
+    {
+        while (true)
+        {
+            if (x % 2 == 0) x = (3 * x + 1) / 2;
+            else x = x / 2;
+            x ^= (weyl += s);
+
+            co_yield x & 1;
+        }
     }
 }
