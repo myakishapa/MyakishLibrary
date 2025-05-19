@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Meta">
+      <UniqueIdentifier>{29acc503-8960-4588-86e4-92b77fd03b4f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Streams">
+      <UniqueIdentifier>{bd4dc624-8280-43e6-a952-58350502fd23}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Math">
+      <UniqueIdentifier>{26951223-efed-419d-a0a3-764a578d5d9b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Enum">
+      <UniqueIdentifier>{969d862f-5af5-47c4-bfd7-3f22d6d6fdaf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Functional">
+      <UniqueIdentifier>{82301509-a868-43a1-b5be-5e64fc72be9b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Ranges">
+      <UniqueIdentifier>{45c19e80-141c-410f-a466-b96b8f7853f7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="MyakishLibrary.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Any.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Meta\Pack.hpp">
+      <Filter>Header Files\Meta</Filter>
+    </ClInclude>
+    <ClInclude Include="Meta\Functions.hpp">
+      <Filter>Header Files\Meta</Filter>
+    </ClInclude>
+    <ClInclude Include="Meta\Concepts.hpp">
+      <Filter>Header Files\Meta</Filter>
+    </ClInclude>
+    <ClInclude Include="Meta\Tag.hpp">
+      <Filter>Header Files\Meta</Filter>
+    </ClInclude>
+    <ClInclude Include="Streams\Concepts.hpp">
+      <Filter>Header Files\Streams</Filter>
+    </ClInclude>
+    <ClInclude Include="Streams\Common.hpp">
+      <Filter>Header Files\Streams</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Common.hpp">
+      <Filter>Header Files\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Enum\Dynamic.hpp">
+      <Filter>Header Files\Enum</Filter>
+    </ClInclude>
+    <ClInclude Include="Enum\BitwiseOperators.hpp">
+      <Filter>Header Files\Enum</Filter>
+    </ClInclude>
+    <ClInclude Include="Functional\Pipeline.hpp">
+      <Filter>Header Files\Functional</Filter>
+    </ClInclude>
+    <ClInclude Include="Utility.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Ranges\Bit.hpp">
+      <Filter>Header Files\Ranges</Filter>
+    </ClInclude>
+    <ClInclude Include="Core.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

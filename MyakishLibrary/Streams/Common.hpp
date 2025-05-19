@@ -1,0 +1,910 @@
+#pragma once
+
+#include <filesystem>
+#include <fstream>
+#include <ranges>
+
+#include <MyakishLibrary/Meta/Concepts.hpp>
+#include <MyakishLibrary/Meta/Functions.hpp>
+#include <MyakishLibrary/Streams/Concepts.hpp>
+
+#include <MyakishLibrary/Utility.hpp>
+
+#include <MyakishLibrary/Functional/Pipeline.hpp>
+
+namespace fs = std::filesystem;
+
+namespace myakish::streams
+{
+    template<bool Const>
+    struct ContiguousStream
+    {
+        using DataType = meta::ConstIfT<std::byte, Const>;
+
+        DataType* const data;
+        const DataType* const sentinel;
+
+        Size offset;
+
+        void Write(const std::byte* source, Size size) requires !Const
+        {
+            std::memcpy(data + offset, source, size);
+            offset += size;
+        }
+
+        void Seek(Size seek)
+        {
+            offset += seek;
+        }
+
+        Size Offset() const
+        {
+            return offset;
+        }
+
+        void Read(std::byte* dst, Size size)
+        {
+            std::memcpy(dst, data + offset, size);
+            offset += size;
+        }
+        bool Valid() const
+        {
+            return (data + offset) < sentinel;
+        }
+
+        operator ContiguousStream<false>() const requires !Const
+        {
+            return { data, sentinel, offset };
+        }
+    };
+    static_assert(RandomAccessBinaryOutputIterator<ContiguousStream<false>>, "ContiguousStream must be RandomAccessOutputIterator");
+    static_assert(RandomAccessBinaryInputIterator<ContiguousStream<true>>, "const ContiguousStream must be RandomAccessInputIterator");
+
+    using ConstContiguosIterator = ContiguousStream<true>;
+
+    struct RawConstIterator
+    {
+        const std::byte* const data;
+        const std::byte* const sentinel;
+
+        Size offset;
+
+        RawConstIterator(const std::byte* data, const std::byte* sentinel) : data(data), sentinel(sentinel), offset{} {}
+
+        void Read(std::byte* dst, Size size)
+        {
+            std::memcpy(dst, data + offset, size);
+            offset += size;
+        }
+
+        void Seek(Size seek)
+        {
+            offset += seek;
+        }
+
+        Size Offset() const
+        {
+            return offset;
+        }
+
+        bool Valid() const
+        {
+            return (data + offset) < sentinel;
+        }
+
+    };
+    static_assert(RandomAccessBinaryInputIterator<RawConstIterator>, "DefaultBinaryInputIterator must be RandomAccessInputIterator");
+
+    struct RawIterator
+    {
+        std::byte* const data;
+        const std::byte* const sentinel;
+
+        Size offset;
+
+        RawIterator(std::byte* data, const std::byte* sentinel) : data(data), sentinel(sentinel), offset{} {}
+
+        void Write(const std::byte* source, Size size)
+        {
+            std::memcpy(data + offset, source, size);
+            offset += size;
+        }
+
+        void Seek(Size seek)
+        {
+            offset += seek;
+        }
+
+        Size Offset() const
+        {
+            return offset;
+        }
+
+        void Read(std::byte* dst, Size size)
+        {
+            std::memcpy(dst, data + offset, size);
+            offset += size;
+        }
+        bool Valid() const
+        {
+            return (data + offset) < sentinel;
+        }
+    };
+    static_assert(RandomAccessBinaryOutputIterator<RawIterator>, "DefaultBinaryOutputIterator must be RandomAccessOutputIterator");
+    static_assert(RandomAccessBinaryInputIterator<RawIterator>, "DefaultBinaryOutputIterator must be RandomAccessInputIterator");
+
+    struct ConstRaw
+    {
+        const std::byte* const data;
+        const Size size;
+
+        ConstRaw(const std::byte* data, Size size) : data(data), size(size)
+        {
+
+        }
+        
+        ConstRaw(const std::byte* data, const std::byte* sentinel) : data(data), size(sentinel - data) {}
+
+        template<std::ranges::contiguous_range Range>
+        ConstRaw(Range&& r) : data(reinterpret_cast<const std::byte*>(std::ranges::data(std::forward<Range>(r)))), size(std::ranges::size(std::forward<Range>(r)) * sizeof(std::ranges::range_value_t<Range>)) {}
+
+        RawConstIterator Begin() const
+        {
+            return RawConstIterator(data, data + size);
+        }
+
+        Size Length() const
+        {
+            return size;
+        }
+    };
+    static_assert(RandomAccessBinaryInput<ConstRaw>, "ConstRaw must be RandomAccessBinaryInput");
+    struct Raw
+    {
+        std::byte* const data;
+        const Size size;
+
+        Raw(std::byte* data, Size size) : data(data), size(size)
+        {
+
+        }        
+
+        Raw(std::byte* data, std::byte* sentinel) : data(data), size(sentinel - data) {}
+
+
+        template<std::ranges::contiguous_range Range>
+        Raw(Range&& r) : data(reinterpret_cast<std::byte*>(std::ranges::data(std::forward<Range>(r)))), size(std::ranges::size(std::forward<Range>(r)) * sizeof(std::ranges::range_value_t<Range>)) {}
+
+        RawIterator Begin() const
+        {
+            return RawIterator(data, data + size);
+        }
+
+        Size Length() const
+        {
+            return size;
+        }
+
+        void Reserve(Size reserve)
+        {
+            
+        }
+    };
+    static_assert(RandomAccessBinaryInput<Raw>, "Raw must be RandomAccessBinaryInput");
+    static_assert(RandomAccessBinaryOutput<Raw>, "Raw must be RandomAccessBinaryInput");
+
+
+    struct StandardOutputStream
+    {
+        std::ostream& out;
+
+        StandardOutputStream(std::ostream& out) : out(out)
+        {
+
+        }
+
+        struct Iterator
+        {
+            std::ostream& out;
+
+            Iterator(std::ostream& out) : out(out)
+            {
+
+            }
+
+            void Write(const std::byte* source, Size size)
+            {
+                out.write(reinterpret_cast<const char*>(source), size);
+            }
+
+            void Seek(Size seek)
+            {
+                out.seekp(seek, std::ios::cur);
+            }
+            Size Offset() const
+            {
+                return out.tellp();
+            }
+        };
+
+        Iterator Begin() const
+        {
+            return Iterator(out);
+        }
+
+        void Reserve(Size reserve)
+        {
+            return;
+        }
+
+    };
+    static_assert(RandomAccessBinaryOutput<StandardOutputStream>, "StandardOutputStream must be RandomAccessBinaryOutput");
+    struct StandardInputStream
+    {
+        std::istream& in;
+
+        StandardInputStream(std::istream& in) : in(in)
+        {
+
+        }
+
+        struct Iterator
+        {
+            std::istream& in;
+
+            Iterator(std::istream& in) : in(in)
+            {
+
+            }
+
+            void Read(std::byte* destination, Size size)
+            {
+                if (!Valid()) __debugbreak();
+                in.read(reinterpret_cast<char*>(destination), size);
+            }
+
+            void Seek(Size seek)
+            {
+                in.seekg(seek, std::ios::cur);
+            }
+            Size Offset() const
+            {
+                return in.tellg();
+            }
+
+            bool Valid() const
+            {
+                return !in.eof();
+            }         
+        };
+
+        Iterator Begin() const
+        {
+            return Iterator(in);
+        }
+    };
+    static_assert(BinaryInput<StandardInputStream>, "StandardInputStream must be BinaryInput");
+
+    struct FileInputStream : StandardInputStream
+    {
+        fs::path path;
+        std::ifstream in;
+
+        FileInputStream(fs::path path) : path(path), in(path, std::ios::binary), StandardInputStream(in)
+        {
+
+        }
+
+        Size Length() const
+        {
+            return fs::file_size(path);
+        }
+    };
+    static_assert(RandomAccessBinaryInput<FileInputStream>, "FileInputStream must be RandomAccessBinaryInput");
+
+   
+    template<BinaryOutputIterator Iterator, myakish::meta::TriviallyCopyable Type>
+    void Write(Iterator&& it, Type value)
+    {
+        it.Write(reinterpret_cast<const std::byte*>(&value), sizeof(value));
+    }
+    template<myakish::meta::TriviallyCopyable Type, BinaryInputIterator Iterator>
+    Type Read(Iterator&& it)
+    {
+        Type result;
+        it.Read(reinterpret_cast<std::byte*>(&result), sizeof(result));
+        return result;
+    }
+
+    struct PolymorphicStreamBase
+    {
+        virtual void Seek(Size size) const = 0;
+        virtual void Read(std::byte* dst, Size size) const = 0;
+        virtual bool Valid() const = 0;
+        virtual void Write(const std::byte* src, Size size) const = 0;
+        virtual Size Offset() const = 0;
+    };
+
+    template<BinaryIterator IteratorRef>
+    struct PolymorphicStream : virtual PolymorphicStreamBase
+    {
+        IteratorRef&& ref;
+
+        PolymorphicStream(IteratorRef&& ref) : ref(std::forward<IteratorRef>(ref)) {}
+
+        virtual void Seek(Size size) const override
+        {
+            std::forward<IteratorRef>(ref).Seek(size);
+        }
+
+        virtual void Read(std::byte* dst, Size size) const override
+        {
+            if constexpr(BinaryInputIterator<IteratorRef&&>) std::forward<IteratorRef>(ref).Read(dst, size);
+            else std::terminate();
+        }
+        virtual bool Valid() const override
+        {
+            if constexpr (BinaryInputIterator<IteratorRef&&>) return std::forward<IteratorRef>(ref).Valid();
+            else std::terminate();
+        }
+
+
+        virtual void Write(const std::byte* src, Size size) const override
+        {
+            if constexpr (BinaryOutputIterator<IteratorRef&&>) std::forward<IteratorRef>(ref).Write(src, size);
+            else std::terminate();
+        }
+
+        virtual Size Offset() const override
+        {
+            if constexpr (RandomAccessBinaryIterator<IteratorRef&&>) return std::forward<IteratorRef>(ref).Offset();
+            else std::terminate();
+        }
+    };
+
+
+    template<BinaryIterator IteratorRef>
+    PolymorphicStream(IteratorRef&&) -> PolymorphicStream<IteratorRef>;
+
+}
+
+namespace myakish::streams2
+{
+    struct ExpositionOnlyStream
+    {
+        void Seek(Size size); // Stream
+
+        bool Valid() const; // Stream
+
+        Size Length() const; // SizedStream
+
+        Size Offset() const; // AlignableStream
+
+        void Read(std::byte* dst, Size size); // InputStream
+
+        void Write(const std::byte* src, Size size); // OutputStream
+
+        void Reserve(Size reserve); // ReservableStream
+    };
+    static_assert(AlignableStream<ExpositionOnlyStream>, "ExpositionOnlyStream must be AlignableStream");
+    static_assert(SizedStream<ExpositionOnlyStream>, "ExpositionOnlyStream must be RandomAccessStream");
+    static_assert(InputStream<ExpositionOnlyStream>, "ExpositionOnlyStream must be InputStream");
+    static_assert(ReservableStream<ExpositionOnlyStream>, "ExpositionOnlyStream must be ReservableStream");
+
+    template<bool Const>
+    struct ContiguousStream
+    {
+        using DataType = meta::ConstIfT<std::byte, Const>;
+
+        DataType* data;
+        const std::byte* const sentinel;
+
+        void Write(const std::byte* source, Size size) requires !Const
+        {
+            std::memcpy(std::exchange(data, data + size), source, size);
+        }
+
+        void Seek(Size seek)
+        {
+            data += seek;
+        }
+
+        void Read(std::byte* dst, Size size)
+        {
+            std::memcpy(dst, std::exchange(data, data + size), size);
+        }
+
+        bool Valid() const
+        {
+            return data < sentinel;
+        }
+
+        operator ContiguousStream<false>() const requires !Const
+        {
+            return { data, sentinel };
+        }
+
+        Size Length() const
+        {
+            return sentinel - data;
+        }
+    };
+    static_assert(OutputStream<ContiguousStream<false>>, "ContiguousStream must be OutputStream");
+    static_assert(InputStream<ContiguousStream<true>>, "const ContiguousStream must be InputStream");
+    static_assert(SizedStream<ContiguousStream<true>>, "const ContiguousStream must be SizedStream");
+
+    using ConstContiguosStream = ContiguousStream<true>;
+
+    ContiguousStream(std::byte*, const std::byte*) -> ContiguousStream<false>;
+    ContiguousStream(const std::byte*, const std::byte*) -> ContiguousStream<true>;
+
+    template<Stream Underlying>
+    struct AlignableWrapper
+    {
+        Underlying stream;
+        Size offset;
+
+        AlignableWrapper(Underlying stream) : stream(std::move(stream)), offset{} {}
+
+        void Seek(Size size)
+        {
+            offset += size;
+            stream.Seek(size);
+        }
+
+        bool Valid() const
+        {
+            return stream.Valid();
+        }
+
+        Size Length() const requires SizedStream<Underlying>
+        {
+            return stream.Length();
+        }
+
+        Size Offset() const
+        {
+            return offset;
+        }
+
+        void Read(std::byte* dst, Size size) requires InputStream<Underlying>
+        {
+            offset += size;
+            stream.Read(dst, size);
+        }
+
+        void Write(const std::byte* src, Size size) requires OutputStream<Underlying>
+        {
+            offset += size;
+            stream.Write(src, size);
+        }
+
+        void Reserve(Size reserve) requires ReservableStream<Underlying>
+        {
+            stream.Reserve(reserve);
+        }
+    };
+    static_assert(AlignableStream<AlignableWrapper<ExpositionOnlyStream>>, "AlignableWrapper must be AlignableStream");
+    static_assert(SizedStream<AlignableWrapper<ExpositionOnlyStream>>, "AlignableWrapper must be RandomAccessStream");
+    static_assert(InputStream<AlignableWrapper<ExpositionOnlyStream>>, "AlignableWrapper must be InputStream");
+    static_assert(ReservableStream<AlignableWrapper<ExpositionOnlyStream>>, "AlignableWrapper must be ReservableStream");
+
+    struct Aligner
+    {
+        auto operator()(Stream auto stream) const
+        {
+            return AlignableWrapper(std::move(stream));
+        }
+
+        auto operator()(AlignableStream auto alignable) const
+        {
+            return alignable;
+        }
+    };
+    inline constexpr Aligner Aligned;
+
+    
+    struct StandardOutputStream
+    {
+        std::ostream& out;
+
+        StandardOutputStream(std::ostream& out) : out(out)
+        {
+
+        }
+
+        void Seek(Size seek)
+        {
+            out.seekp(seek, std::ios::cur);
+        }
+
+        void Write(const std::byte* source, Size size)
+        {
+            out.write(reinterpret_cast<const char*>(source), size);
+        }
+
+        bool Valid() const
+        {
+            return out.good();
+        }
+    };
+    static_assert(OutputStream<StandardOutputStream>, "StandardOutputStream must be OutputStream");
+    struct StandardInputStream
+    {
+        std::istream& in;
+
+        StandardInputStream(std::istream& in) : in(in)
+        {
+
+        }
+
+
+        void Read(std::byte* destination, Size size)
+        {
+            in.read(reinterpret_cast<char*>(destination), size);
+        }
+
+        void Seek(Size seek)
+        {
+            in.seekg(seek, std::ios::cur);
+        }
+
+        bool Valid() const
+        {
+            return in.good();
+        }
+    };
+    static_assert(InputStream<StandardInputStream>, "StandardInputStream must be InputStream");
+
+    struct FileOutputStream : StandardOutputStream
+    {
+        fs::path path;
+        std::ofstream out;
+
+        FileOutputStream(fs::path path) : path(path), out(path, std::ios::binary), StandardOutputStream(out)
+        {
+
+        }
+    };
+    static_assert(OutputStream<FileOutputStream>, "FileInputStream must be RandomAccessBinaryInput");
+
+    struct FileInputStream : StandardInputStream
+    {
+        fs::path path;
+        std::ifstream in;
+
+        FileInputStream(fs::path path) : path(path), in(path, std::ios::binary), StandardInputStream(in)
+        {
+
+        }
+    };
+    static_assert(InputStream<FileInputStream>, "FileInputStream must be RandomAccessBinaryInput");
+    
+    struct CopyFunctor
+    {
+        constexpr void operator()(InputStream auto&& in, OutputStream auto&& out, Size bytes) const
+        {
+            std::vector<std::byte> buffer(bytes);
+            in.Read(buffer.data(), bytes);
+            out.Write(buffer.data(), bytes);
+        }
+    };
+    inline constexpr CopyFunctor Copy;
+
+    struct WriteFunctor
+    {
+        constexpr void operator()(OutputStream auto&& out, myakish::meta::TriviallyCopyable auto value) const
+        {
+            out.Write(reinterpret_cast<const std::byte*>(&value), sizeof(value));
+        }
+
+        constexpr void operator()(OutputStream auto&& out, std::string_view str) const
+        {
+            out.Write(reinterpret_cast<const std::byte*>(str.data()), str.size());
+        }
+    };
+    inline constexpr WriteFunctor Write;
+
+    template<myakish::meta::TriviallyCopyable Type>
+    struct ReadFunctor
+    {
+        constexpr Type operator()(InputStream auto&& in) const
+        {
+            Type result;
+            in.Read(reinterpret_cast<std::byte*>(&result), sizeof(result));
+            return result;
+        }
+    };
+    template<myakish::meta::TriviallyCopyable Type>
+    inline constexpr ReadFunctor<Type> Read;
+
+    struct AlignFunctor
+    {
+        constexpr void operator()(AlignableStream auto&& stream, Size alignment) const
+        {
+            stream.Seek((alignment - (stream.Offset() % alignment)) % alignment);
+        }
+    };
+    inline constexpr AlignFunctor Align;
+
+    struct PolymorphicStreamBase
+    {
+        virtual void Seek(Size size) const = 0; // Stream
+        
+        virtual bool Valid() const = 0; // Stream
+
+        virtual Size Length() const = 0; // SizedStream
+
+        virtual Size Offset() const = 0; // AlignableStream
+
+        virtual void Read(std::byte* dst, Size size) const = 0; // InputStream
+
+        virtual void Write(const std::byte* src, Size size) const = 0; // OutputStream
+
+        virtual void Reserve(Size reserve) const = 0; // ReservableStream
+    };
+    static_assert(AlignableStream<PolymorphicStreamBase>, "PolymorphicStreamBase must be AlignableStream");
+    static_assert(SizedStream<PolymorphicStreamBase>, "PolymorphicStreamBase must be RandomAccessStream");
+    static_assert(InputStream<PolymorphicStreamBase>, "PolymorphicStreamBase must be InputStream");
+    static_assert(ReservableStream<PolymorphicStreamBase>, "PolymorphicStreamBase must be ReservableStream");
+
+    template<Stream Underlying>
+    struct PolymorphicStream : PolymorphicStreamBase
+    {
+        Underlying &&stream;
+
+        PolymorphicStream(Underlying &&stream) : stream(std::forward<Underlying>(stream)) {}
+
+        virtual void Seek(Size size) const override
+        {
+            stream.Seek(size);
+        }
+
+        virtual bool Valid() const override
+        {
+            return stream.Valid();
+        }
+
+        virtual Size Length() const override
+        {
+            if constexpr (SizedStream<Underlying>) return stream.Length();
+            else std::terminate();
+        }
+
+        virtual Size Offset() const override
+        {
+            if constexpr (AlignableStream<Underlying>) return stream.Offset();
+            else std::terminate();
+        }
+
+        virtual void Read(std::byte* dst, Size size) const override
+        {
+            if constexpr (InputStream<Underlying>) stream.Read(dst, size);
+            else std::terminate();
+        }
+
+        virtual void Write(const std::byte* src, Size size) const override
+        {
+            if constexpr (OutputStream<Underlying>) stream.Write(src, size);
+            else std::terminate();
+        }
+
+        virtual void Reserve(Size reserve) const override
+        {
+            if constexpr (ReservableStream<Underlying>) stream.Reserve(reserve);
+            else std::terminate();
+        }
+    };
+
+    template<Stream Underlying>
+    PolymorphicStream(Underlying&&) -> PolymorphicStream<Underlying&&>;
+
+    struct Polymorphizer
+    {
+        auto operator()(Stream auto &&stream) const
+        {
+            return PolymorphicStream(std::forward<decltype(stream)>(stream));
+        }
+    };
+    inline constexpr Polymorphizer Polymorphize;
+
+    template<std::ranges::input_range Range>
+    struct RangeInputStream
+    {
+        using Iterator = std::ranges::iterator_t<Range>;
+        using Value = std::ranges::range_value_t<Range>;
+
+        constexpr inline static Size ValueSize = (Size)sizeof(Value);
+
+        Range&& range;
+        Iterator iterator;
+        Size offset;
+
+        RangeInputStream(Range&& range) : range(std::forward<Range>(range)), iterator(std::ranges::begin(range)), offset{ 0 } {}
+
+        void Read(std::byte* dst, Size size)
+        {
+            while (size)
+            {
+                auto currentLeft = ValueSize - offset;
+                if (currentLeft == 0)
+                {
+                    iterator++;
+                    offset = 0;
+                    currentLeft = ValueSize;
+                }
+
+                auto toCopy = std::min(currentLeft, size);
+
+                Value current = *iterator;
+                memcpy(std::exchange(dst, dst + toCopy), AsBytePtr(&current) + offset, toCopy);
+
+                offset += toCopy;
+                size -= toCopy;
+            }
+        }
+
+        bool Valid() const
+        {
+            return iterator == std::ranges::end(range);
+        }
+
+        void Seek(Size size)
+        {
+            auto currentLeft = ValueSize - offset;
+            auto toCopy = std::min(currentLeft, size);
+            size -= toCopy;
+            offset += toCopy;
+
+            if (size)
+            {
+                std::ranges::advance(iterator, size / ValueSize);
+                offset = size % ValueSize;
+            }
+        }
+
+
+    };
+
+    template<std::ranges::range Range> 
+    struct RangeOutputStream
+    {
+        using Iterator = std::ranges::iterator_t<Range>;
+        using Value = std::ranges::range_value_t<Range>;
+
+        constexpr inline static Size ValueSize = (Size)sizeof(Value);
+
+        Range&& range;
+        Iterator iterator;
+
+        Value value;
+        Size offset;
+
+        RangeOutputStream(Range&& range) : range(std::forward<Range>(range)), iterator(std::ranges::begin(range)), offset{ 0 } {}
+
+        void Write(const std::byte* src, Size size)
+        {     
+            while (size)
+            {              
+                auto currentLeft = ValueSize - offset;
+
+                auto toCopy = std::min(currentLeft, size);
+                std::memcpy(AsBytePtr(&value) + offset, std::exchange(src, src + toCopy), toCopy);
+
+                offset += toCopy;
+                size -= toCopy;
+                
+                currentLeft = ValueSize - offset;
+                
+                if (currentLeft == 0)
+                {
+                    *iterator++ = value;
+                    offset = 0;
+                }
+            }
+        }
+
+        bool Valid() const
+        {
+            return iterator == std::ranges::end(range);
+        }
+
+        void Seek(Size size)
+        {
+            while (size)
+            {
+                auto currentLeft = ValueSize - offset;
+
+                auto toCopy = std::min(currentLeft, size);
+                std::memset(AsBytePtr(&value) + offset, 0, toCopy);
+
+                offset += toCopy;
+                size -= toCopy;
+
+                currentLeft = ValueSize - offset;
+
+                if (currentLeft == 0)
+                {
+                    *iterator++ = value;
+                    offset = 0;
+                }
+            }
+        }
+
+
+    };
+
+    struct ReadFromRangeFunctor
+    {
+        template<std::ranges::contiguous_range Range>
+        auto operator()(Range&& r) const
+        {
+            auto data = AsBytePtr(std::ranges::data(r));
+            auto size = std::ranges::size(r) * sizeof(std::ranges::range_value_t<Range>);
+
+            return ContiguousStream<true>(data, data + size);
+        }
+
+        template<std::ranges::input_range Range>
+        auto operator()(Range&& r) const
+        {
+            return RangeInputStream(std::forward<Range>(r));
+        }
+    };
+    inline constexpr ReadFromRangeFunctor ReadFromRange;
+
+    struct WriteToRangeFunctor
+    {
+        template<std::ranges::contiguous_range Range>
+        auto operator()(Range&& r) const
+        {
+            auto data = AsBytePtr(std::ranges::data(r));
+            auto size = std::ranges::size(r) * sizeof(std::ranges::range_value_t<Range>);
+
+            return ContiguousStream<false>(data, data + size);
+        }
+
+        template<std::ranges::range Range>
+        auto operator()(Range&& r) const
+        {
+            return RangeOutputStream(std::forward<Range>(r));
+        }
+    };
+    inline constexpr WriteToRangeFunctor WriteToRange;
+
+    template<meta::TriviallyCopyable Type, Stream Underlying>
+    struct StreamIterator
+    {
+        Underlying &&stream;
+
+        StreamIterator(Underlying&& stream) : stream(std::forward<Underlying>(stream)) {}
+        std::insert_iterator a() {}
+
+        using iterator_concept = std::input_iterator_tag;
+    };
+    static_assert(std::input_or_output_iterator<StreamIterator<std::byte, ExpositionOnlyStream>>, "StreamIterator must be std::input_or_output_iterator");
+}
+
+template<>
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::Aligner> = true;
+
+template<>
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::CopyFunctor> = true;
+
+template<>
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::WriteFunctor> = true;
+
+template<myakish::meta::TriviallyCopyable Type>
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::ReadFunctor<Type>> = true;
+
+template<>
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::AlignFunctor> = true;
+
+template<>
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::ReadFromRangeFunctor> = true;
+
+template<>
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::WriteToRangeFunctor> = true;
+
+template<>
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::Polymorphizer> = true;
