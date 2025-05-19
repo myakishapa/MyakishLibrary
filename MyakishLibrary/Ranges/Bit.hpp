@@ -244,5 +244,15 @@ namespace myakish::ranges
         }
     };
     constexpr inline BitsFunctor Bits;
+
+    struct ValuesFunctor : std::ranges::range_adaptor_closure<ValuesFunctor>
+    {
+        auto operator()(std::ranges::range auto&& range) const
+        {
+            return range | std::views::transform([](auto desc) -> bool { return desc.Value(); });
+        }
+    };
+    constexpr inline ValuesFunctor Values;
+
 }
 

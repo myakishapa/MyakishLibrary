@@ -144,6 +144,13 @@ int main()
 
         auto [f, s] = myakish::SliceTuple<4>(a);
     }
+
+    {
+        for (auto test : myakish::CollatzWeylPRNG(0i64, 0i64, 1i64) | std::views::take(100))
+        {
+            std::print("{:b}", test);
+        }
+    }
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

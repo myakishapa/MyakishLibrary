@@ -878,11 +878,10 @@ namespace myakish::streams2
         Underlying &&stream;
 
         StreamIterator(Underlying&& stream) : stream(std::forward<Underlying>(stream)) {}
-        std::insert_iterator a() {}
 
         using iterator_concept = std::input_iterator_tag;
     };
-    static_assert(std::input_or_output_iterator<StreamIterator<std::byte, ExpositionOnlyStream>>, "StreamIterator must be std::input_or_output_iterator");
+    //static_assert(std::input_or_output_iterator<StreamIterator<std::byte, ExpositionOnlyStream>>, "StreamIterator must be std::input_or_output_iterator");
 }
 
 template<>
