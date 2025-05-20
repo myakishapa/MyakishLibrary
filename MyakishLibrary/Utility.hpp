@@ -71,7 +71,7 @@ namespace myakish
     {
         while (true)
         {
-            if (x % 2 == 0) x = (3 * x + 1) / 2;
+            if (x % 2 == 1) x = (3 * x + 1) / 2;
             else x = x / 2;
             x ^= (weyl += s);
 
