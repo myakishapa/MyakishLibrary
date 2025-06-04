@@ -21,31 +21,12 @@
 
 #include <MyakishLibrary/Ranges/Bit.hpp>
 
-namespace st = myakish::streams;
 namespace st2 = myakish::streams2;
 
 using namespace myakish::functional::operators;
 
 int main()
 {
-    {
-        std::vector<std::byte> data(1024);
-     
-        auto stream = st::Raw(data);
-
-        auto begin = stream.Begin();
-
-        st::Write(begin, 1);
-        st::Write(begin, 2);
-
-        auto begin2 = st::PolymorphicStream(st::Raw(data.data(), data.data() + data.size()).Begin());
-
-        auto i1 = st::Read<int>(begin2);
-        auto i2 = st::Read<int>(begin2);
-
-        std::println("{} {}", i1, i2);
-    }
-
     {
         std::vector<std::byte> data(1024);
  
