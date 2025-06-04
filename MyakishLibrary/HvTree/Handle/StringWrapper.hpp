@@ -1,8 +1,8 @@
 #pragma once
-#include <MyakishLibrary/HvTree/HvTree.h>
-#include <MyakishLibrary/HvTree/Handle/CombinedHashHandle.h>
-#include <MyakishLibrary/HvTree/Handle/HierarchicalHandle.h>
-#include <MyakishLibrary/HvTree/Handle/WrapperComposition.h>
+#include <MyakishLibrary/HvTree/HvTree.hpp>
+#include <MyakishLibrary/HvTree/Handle/CombinedHashHandle.hpp>
+#include <MyakishLibrary/HvTree/Handle/HierarchicalHandle.hpp>
+#include <MyakishLibrary/HvTree/Handle/WrapperComposition.hpp>
 
 namespace myakish::tree::handle
 {

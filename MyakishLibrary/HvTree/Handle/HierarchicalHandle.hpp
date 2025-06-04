@@ -1,6 +1,6 @@
 #pragma once
-#include <MyakishLibrary/HvTree/HvTree.h>
-#include <MyakishLibrary/HvTree/Array/Array.h>
+#include <MyakishLibrary/HvTree/HvTree.hpp>
+#include <MyakishLibrary/HvTree/Array/Array.hpp>
 
 #include <array>
 #include <compare>

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <MyakishLibrary/HvTree/Parser/Parser.h>
-#include <MyakishLibrary/HvTree/Conversion/Conversion.h>
+#include <MyakishLibrary/HvTree/Parser/Parser.hpp>
+#include <MyakishLibrary/HvTree/Conversion/Conversion.hpp>
 
 namespace myakish::tree::parse
 {

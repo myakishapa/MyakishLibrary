@@ -21,11 +21,11 @@
 
 #include <MyakishLibrary/Ranges/Bit.hpp>
 
-#include <MyakishLibrary/HvTree/HvTree.h>
-#include <MyakishLibrary/HvTree/Conversion/Conversion.h>
-#include <MyakishLibrary/HvTree/Handle/HierarchicalHandle.h>
-#include <MyakishLibrary/HvTree/Handle/StringWrapper.h>
-#include <MyakishLibrary/HvTree/Data/DedicatedAllocation.h>
+#include <MyakishLibrary/HvTree/HvTree.hpp>
+#include <MyakishLibrary/HvTree/Conversion/Conversion.hpp>
+#include <MyakishLibrary/HvTree/Handle/HierarchicalHandle.hpp>
+#include <MyakishLibrary/HvTree/Handle/StringWrapper.hpp>
+#include <MyakishLibrary/HvTree/Data/DedicatedAllocation.hpp>
 
 namespace st2 = myakish::streams;
 namespace hv = myakish::tree;

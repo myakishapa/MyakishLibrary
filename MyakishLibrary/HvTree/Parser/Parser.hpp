@@ -1,9 +1,9 @@
 #pragma once
 
-#include <MyakishLibrary/HvTree/HvTree.h>
+#include <MyakishLibrary/HvTree/HvTree.hpp>
 
-#include <MyakishLibrary/HvTree/Parser/Spirit.h>
-#include <MyakishLibrary/HvTree/Handle/CombinedHashHandle.h>
+#include <MyakishLibrary/HvTree/Parser/Spirit.hpp>
+#include <MyakishLibrary/HvTree/Handle/CombinedHashHandle.hpp>
 
 #include <map>
 #include <ranges>
