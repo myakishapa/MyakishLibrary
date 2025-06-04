@@ -1,0 +1,57 @@
+#pragma once
+#include <HvTree2/HvTree.h>
+#include <HvTree2/Handle/CombinedHashHandle.h>
+#include <HvTree2/Handle/HierarchicalHandle.h>
+#include <HvTree2/Handle/WrapperComposition.h>
+
+namespace hv::handle
+{
+    struct StringWrapper
+    {
+        std::string_view str;
+
+        constexpr operator CombinedHash() const
+        {
+            return CombinedHash{ hc::Hash(str) };
+        }
+
+        operator hierarchical::Static<std::uint64_t, 1>() const
+        {
+            return hc::Hash(str);
+        }
+
+        /*template<myakish::Size Capacity>
+        operator hierarchical::FixedCapacity<std::uint64_t, Capacity>() const
+        {
+            return { hc::Hash(str) };
+        }*/
+    };
+
+    template<>
+    struct EnableWrapper<StringWrapper> : std::true_type {};
+
+    hierarchical::Static<std::uint64_t, 1> Resolve(FamilyTag<hierarchical::Family<std::uint64_t>>, StringWrapper wrapper)
+    {
+        return wrapper;
+    }
+
+    hierarchical::Static<std::string_view, 1> Resolve(FamilyTag<hierarchical::Family<std::string_view>>, StringWrapper wrapper)
+    {
+        return wrapper.str;
+    }
+
+    /*WrapperComposition<StringWrapper, StringWrapper> operator/(StringWrapper lhs, StringWrapper rhs)
+    {
+        return { { lhs, rhs } };
+    }*/
+}
+
+
+
+namespace hv::literals
+{
+    constexpr handle::StringWrapper operator ""_sk(const char* str, std::size_t count)
+    {
+        return handle::StringWrapper{ std::string_view(str, count) };
+    }
+}
