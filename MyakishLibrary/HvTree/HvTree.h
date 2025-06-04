@@ -1,8 +1,6 @@
 #pragma once
 
-#include <HvTree2/Common/ConstexprHash.h>
-//#include <HvTree2/myakish::streams/Concepts.h>
-//#include <HvTree2/myakish::streams/Common.h>
+#include <MyakishLibrary/Utility.hpp>
 
 #include <MyakishLibrary/Streams/Common.hpp>
 #include <MyakishLibrary/Streams/Concepts.hpp>
@@ -11,7 +9,7 @@
 #include <map>
 #include <string_view>
 
-namespace hv
+namespace myakish::tree
 {
     namespace conversion
     {
@@ -22,8 +20,8 @@ namespace hv
         {
             static inline constexpr bool UseBinary = true;
 
-            template<myakish::streams::BinaryInput BinaryStream, typename ...Args>
-            static Undefined Convert(BinaryStream&& in, Args&&... args)
+            template<myakish::streams::InputStream Stream, typename ...Args>
+            static Undefined Convert(Stream&& in, Args&&... args)
             {
                 return {};
             }
@@ -39,8 +37,8 @@ namespace hv
         {
             static inline constexpr bool UseBinary = true;
 
-            template<myakish::streams::BinaryOutput BinaryStream, typename ...Args>
-            static void Convert(BinaryStream&& out, Undefined, Args&&... args)
+            template<myakish::streams::OutputStream Stream, typename ...Args>
+            static void Convert(Stream&& out, Undefined, Args&&... args)
             {
                 return;
             }
@@ -59,8 +57,8 @@ namespace hv
         template<typename EntryType>
         concept Entry = requires(EntryType entry)
         {
-            { entry.Read() } -> myakish::streams::BinaryInput;
-            { entry.Write() } -> myakish::streams::BinaryOutput;
+            { entry.Read() } -> myakish::streams::InputStream;
+            { entry.Write() } -> myakish::streams::OutputStream;
         };
 
         template<typename StorageType>
@@ -163,7 +161,7 @@ namespace hv
         template<typename Arg>
         auto Subtree(Arg&& handle) const
         {
-            return hv::Descriptor(*data, base / Resolve(handle::FamilyTag<HandleFamily>{}, std::forward<Arg>(handle)));
+            return Descriptor(*data, base / Resolve(handle::FamilyTag<HandleFamily>{}, std::forward<Arg>(handle)));
         }
 
         template<typename Arg>

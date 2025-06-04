@@ -14,7 +14,7 @@
 
 namespace fs = std::filesystem;
 
-namespace myakish::streams2
+namespace myakish::streams
 {
     struct ExpositionOnlyStream
     {
@@ -44,6 +44,11 @@ namespace myakish::streams2
 
         DataType* data;
         const std::byte* const sentinel;
+
+        ContiguousStream() = default;
+
+        ContiguousStream(DataType* data, const std::byte* const sentinel) : data(data), sentinel(sentinel) {}
+        ContiguousStream(DataType* data, Size size) : data(data), sentinel(data + size) {}
 
         void Write(const std::byte* source, Size size) requires !Const
         {
@@ -531,25 +536,25 @@ namespace myakish::streams2
 }
 
 template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::Aligner> = true;
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::Aligner> = true;
 
 template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::CopyFunctor> = true;
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::CopyFunctor> = true;
 
 template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::WriteFunctor> = true;
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::WriteFunctor> = true;
 
 template<myakish::meta::TriviallyCopyable Type>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::ReadFunctor<Type>> = true;
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::ReadFunctor<Type>> = true;
 
 template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::AlignFunctor> = true;
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::AlignFunctor> = true;
 
 template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::ReadFromRangeFunctor> = true;
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::ReadFromRangeFunctor> = true;
 
 template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::WriteToRangeFunctor> = true;
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::WriteToRangeFunctor> = true;
 
 template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams2::Polymorphizer> = true;
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::Polymorphizer> = true;

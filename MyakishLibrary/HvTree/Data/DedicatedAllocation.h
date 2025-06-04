@@ -1,12 +1,12 @@
 #pragma once
-#include <HvTree2/HvTree.h>
+#include <MyakishLibrary/HvTree/HvTree.h>
 
-namespace hv::data
+namespace myakish::tree::data
 {
     class DedicatedAllocationEntry
     {
         std::byte* data;
-        std::size_t size;
+        Size size;
 
         template<typename>
         friend class DedicatedAllocationStorage;
@@ -39,31 +39,51 @@ namespace hv::data
             }
         }
 
-        myakish::streams::ConstRaw Read() const
+        myakish::streams::ConstContiguosStream Read() const
         {
-            return myakish::streams::ConstRaw(data, size);
+            return myakish::streams::ConstContiguosStream(data, size);
         }
 
         struct EntryOutputStream
         {
             DedicatedAllocationEntry& entry;
+            Size offset;
 
             EntryOutputStream(DedicatedAllocationEntry& entry) : entry(entry) {}
 
-            bool Reserve(myakish::Size reserve)
+
+            void Reserve(Size reserve)
             {
                 entry.Destroy();
                 entry.data = new std::byte[reserve];
                 entry.size = reserve;
-                return true;
+                offset = 0;
             }
 
-            myakish::streams::RawIterator Begin()
+            void Write(const std::byte* src, Size size)
             {
-                return myakish::streams::RawIterator(entry.data, entry.data + entry.size);
+                std::memcpy(entry.data + offset, src, size);
+                offset += size;
+            }
+
+            bool Valid() const
+            {
+                return offset < entry.size;
+            }
+
+            void Seek(Size size)
+            {
+                offset += size;
+            }
+
+            Size Offset() const
+            {
+                return offset;
             }
         };
-        static_assert(myakish::streams::BinaryOutput<EntryOutputStream>, "hv::DedicatedAllocationStorage::Entry::EntryOutputStream should satisfy myakish::streams::BinaryOutput");
+        static_assert(myakish::streams::OutputStream<EntryOutputStream>, "hv::DedicatedAllocationStorage::Entry::EntryOutputStream should satisfy myakish::streams::OutputStream");
+        static_assert(myakish::streams::ReservableStream<EntryOutputStream>, "hv::DedicatedAllocationStorage::Entry::EntryOutputStream should satisfy myakish::streams::ReservableStream");
+        static_assert(myakish::streams::AlignableStream<EntryOutputStream>, "hv::DedicatedAllocationStorage::Entry::EntryOutputStream should satisfy myakish::streams::AlignableStream");
 
         DedicatedAllocationEntry& operator=(const DedicatedAllocationEntry&) = delete;
         DedicatedAllocationEntry& operator=(DedicatedAllocationEntry&& rhs) noexcept
@@ -109,14 +129,15 @@ namespace hv::data
             return entries.contains(handle);
         }
 
+        /*
         template<myakish::streams::BinaryOutput OutputStream>
         void Save(OutputStream&& out)
         {
             auto count = entries.size();
-            auto structureSize = count * (sizeof(Handle) + sizeof(myakish::Size/*size*/));
+            auto structureSize = count * (sizeof(Handle) + sizeof(myakish::Size));
             auto dataSize = std::ranges::fold_left_first(entries | std::views::values | std::views::transform([](const auto& entry) { return entry.size; }), std::plus{}).value();
 
-            auto totalSize = structureSize + dataSize + sizeof(myakish::Size/*count*/);
+            auto totalSize = structureSize + dataSize + sizeof(myakish::Size);
 
             out.Reserve(totalSize);
 
@@ -144,7 +165,7 @@ namespace hv::data
                 auto [entryIt, inserted] = entries.emplace(handle, size);
                 it.Read(entryIt->second.data, size);
             }
-        }
+        }*/
     };
 
 }

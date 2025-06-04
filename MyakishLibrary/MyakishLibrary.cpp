@@ -21,9 +21,18 @@
 
 #include <MyakishLibrary/Ranges/Bit.hpp>
 
-namespace st2 = myakish::streams2;
+#include <MyakishLibrary/HvTree/HvTree.h>
+#include <MyakishLibrary/HvTree/Conversion/Conversion.h>
+#include <MyakishLibrary/HvTree/Handle/HierarchicalHandle.h>
+#include <MyakishLibrary/HvTree/Handle/StringWrapper.h>
+#include <MyakishLibrary/HvTree/Data/DedicatedAllocation.h>
+
+namespace st2 = myakish::streams;
+namespace hv = myakish::tree;
 
 using namespace myakish::functional::operators;
+using namespace hv::literals;
+ 
 
 int main()
 {
@@ -131,6 +140,22 @@ int main()
         {
             std::print("{:b}", test);
         }
+
+        std::println();
+    }
+
+    {
+        using PesHandle = hv::handle::hierarchical::FixedCapacity<std::uint64_t, 8>;
+        using PesData = hv::data::DedicatedAllocationStorage<PesHandle>;
+
+        PesData data;
+        hv::Descriptor tree(data);
+
+        //auto pes = Resolve(hv::handle::FamilyTag<hv::handle::HandleFamily<PesHandle>>{}, 1_aa);
+
+        tree["apa"_sk]["pes"_sk] = 1337;
+
+        std::println("{}", tree["apa"_sk / "pes"_sk].Acquire<int>());
     }
 }
 

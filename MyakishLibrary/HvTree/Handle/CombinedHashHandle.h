@@ -1,7 +1,7 @@
 #pragma once
-#include <HvTree2/HvTree.h>
+#include <MyakishLibrary/HvTree/HvTree.h>
 
-namespace hv::handle
+namespace myakish::tree::handle
 {
     struct CombinedHash
     {
@@ -9,7 +9,7 @@ namespace hv::handle
 
         constexpr static CombinedHash Combine(CombinedHash lhs, CombinedHash rhs)
         {
-            return CombinedHash(hc::HashCombine(lhs.handle, rhs.handle));
+            return CombinedHash(HashCombine(lhs.handle, rhs.handle));
         }
         constexpr static CombinedHash ArrayIndex(myakish::Size index)
         {
@@ -17,11 +17,12 @@ namespace hv::handle
         }
         constexpr static CombinedHash ArraySize()
         {
-            return CombinedHash(hc::Hash("ArraySize"));
+            return CombinedHash(Hash("ArraySize"));
         }
 
         constexpr friend auto operator<=>(CombinedHash, CombinedHash) = default;
     };
+
     //static_assert(ArrayDataHandle<CombinedHash>, "hv::CombinedHash should satisfy hv::ArrayDataHandle");
     static_assert(myakish::meta::TriviallyCopyable<CombinedHash>, "hv::CombinedHash should satisfy TriviallyCopyable");
 }

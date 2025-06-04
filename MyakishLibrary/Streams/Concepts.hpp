@@ -7,7 +7,7 @@
 #include <MyakishLibrary/Meta/Concepts.hpp>
 #include <MyakishLibrary/Core.hpp>
 
-namespace myakish::streams2
+namespace myakish::streams
 {
     template<typename Type>
     concept Stream = requires(Type stream, const Type cstream, Size size)

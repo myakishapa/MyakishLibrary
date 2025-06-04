@@ -1,9 +1,9 @@
 #pragma once
 
-#include <HvTree2/HvTree.h>
+#include <MyakishLibrary/HvTree/HvTree.h>
 
-#include <HvTree2/Parser/Spirit.h>
-#include <HvTree2/Handle/CombinedHashHandle.h>
+#include <MyakishLibrary/HvTree/Parser/Spirit.h>
+#include <MyakishLibrary/HvTree/Handle/CombinedHashHandle.h>
 
 #include <map>
 #include <ranges>
@@ -13,7 +13,7 @@
 #include <vector>
 
 
-namespace hv::parse
+namespace myakish::tree::parse
 {
     /*using SingleData = std::string_view;
     using ArrayData = std::span<const std::string>;

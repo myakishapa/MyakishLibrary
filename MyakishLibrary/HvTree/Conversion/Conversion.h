@@ -5,27 +5,30 @@
 #include <string>
 #include <string_view>
 
-#include <HvTree2/HvTree.h>
+#include <MyakishLibrary/HvTree/HvTree.h>
 
 #include <MyakishLibrary/Meta/Concepts.hpp>
 
-namespace hv::conversion
+namespace myakish::tree::conversion
 {
     template<typename Type>
     struct EnableTrivialConversion : std::true_type {};
 
+    template<std::ranges::range Range>
+    struct EnableTrivialConversion<Range> : std::false_type {};
+
     template<typename Type>
-    concept TriviallyConvertible = EnableTrivialConversion<Type>::value && !std::ranges::range<Type>;
+    concept TriviallyConvertible = EnableTrivialConversion<Type>::value && meta::TriviallyCopyable<Type>;
 
     template<TriviallyConvertible Type>
     struct HvToType<Type>
     {
         static inline constexpr bool UseBinary = true;
 
-        template<myakish::streams::BinaryInput BinaryStream>
-        static Type Convert(BinaryStream&& in)
+        template<streams::InputStream Stream>
+        static Type Convert(Stream&& in)
         {
-            return myakish::streams::Read<Type>(in);
+            return streams::Read<Type>(in);
         }
     };
 
@@ -34,21 +37,20 @@ namespace hv::conversion
     {
         static inline constexpr bool UseBinary = true;
 
-        template<myakish::streams::BinaryOutput BinaryStream>
-        static void Convert(BinaryStream&& out, Type value)
+        template<streams::OutputStream Stream>
+        static void Convert(Stream&& out, Type value)
         {
-            out.Reserve(sizeof(Type));
-            auto outIt = out.Begin();
-            myakish::streams::Write(outIt, value);
+            if constexpr (streams::ReservableStream<Stream>) out.Reserve(sizeof(Type));
+            streams::Write(out, value);
         }
     };
 
-    struct Bounds
+    /*struct Bounds
     {
         std::size_t begin;
         std::size_t count;
     };
-
+    
     template<std::ranges::sized_range Range> requires myakish::meta::TriviallyCopyable<std::ranges::range_value_t<Range>>&& std::constructible_from<Range, std::size_t>
     struct HvToType<Range>
     {
@@ -127,18 +129,18 @@ namespace hv::conversion
             }
         }
     };
+    */
 
     template<>
     struct TypeToHv<std::string_view>
     {
         static inline constexpr bool UseBinary = true;
 
-        template<myakish::streams::BinaryOutput BinaryStream>
-        static void Convert(BinaryStream&& out, std::string_view value)
+        template<myakish::streams::OutputStream Stream>
+        static void Convert(Stream&& out, std::string_view value)
         {
-            out.Reserve(value.size());
-            auto outIt = out.Begin();
-            outIt.Write(reinterpret_cast<const std::byte*>(value.data()), value.size());
+            if constexpr (streams::ReservableStream<Stream>) out.Reserve(value.size());
+            out.Write(AsBytePtr(value.data()), value.size());
         }
     };
 
@@ -147,18 +149,17 @@ namespace hv::conversion
     {
         static inline constexpr bool UseBinary = true;
 
-        template<myakish::streams::SizedBinaryInput BinaryStream>
-        static std::string Convert(BinaryStream&& in)
+        template<myakish::streams::InputStream Stream> requires myakish::streams::SizedStream<Stream>
+        static std::string Convert(Stream&& in)
         {
-            auto inIt = in.Begin();
             auto size = in.Length();
             std::string result(size, '\0');
-            inIt.Read(reinterpret_cast<std::byte*>(result.data()), size);
+            in.Read(AsBytePtr(result.data()), size);
             return result;
         }
     };
     template<>
-    struct TypeToHv<std::string> : public hv::conversion::TypeToHv<std::string_view>
+    struct TypeToHv<std::string> : public TypeToHv<std::string_view>
     {
 
     };

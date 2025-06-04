@@ -1,13 +1,13 @@
 #pragma once
 
-#include <HvTree2/HvTree.h>
-#include <HvTree2/Handle/CombinedHashHandle.h>
-#include <HvTree2/Handle/HierarchicalHandle.h>
+#include <MyakishLibrary/HvTree/HvTree.h>
+#include <MyakishLibrary/HvTree/Handle/CombinedHashHandle.h>
+#include <MyakishLibrary/HvTree/Handle/HierarchicalHandle.h>
 
 #include <utility>
 #include <tuple>
 
-namespace hv::handle
+namespace myakish::tree::handle
 {
     template<typename ...Wrappers>
     struct WrapperComposition
@@ -17,7 +17,7 @@ namespace hv::handle
         template<typename Family, std::size_t... Indices>
         auto ResolveComposition(std::index_sequence<Indices...>) const
         {
-            return (... / (Resolve(hv::handle::FamilyTag<Family>{}, std::get<Indices>(wrappers) )) );
+            return (... / (Resolve(FamilyTag<Family>{}, std::get<Indices>(wrappers) )) );
         }
 
         template<typename Family, std::size_t... Indices>

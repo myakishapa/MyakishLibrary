@@ -1,10 +1,10 @@
 #pragma once
-#include <HvTree2/HvTree.h>
-#include <HvTree2/Handle/CombinedHashHandle.h>
-#include <HvTree2/Handle/HierarchicalHandle.h>
-#include <HvTree2/Handle/WrapperComposition.h>
+#include <MyakishLibrary/HvTree/HvTree.h>
+#include <MyakishLibrary/HvTree/Handle/CombinedHashHandle.h>
+#include <MyakishLibrary/HvTree/Handle/HierarchicalHandle.h>
+#include <MyakishLibrary/HvTree/Handle/WrapperComposition.h>
 
-namespace hv::handle
+namespace myakish::tree::handle
 {
     struct StringWrapper
     {
@@ -12,12 +12,12 @@ namespace hv::handle
 
         constexpr operator CombinedHash() const
         {
-            return CombinedHash{ hc::Hash(str) };
+            return CombinedHash{ Hash(str) };
         }
 
         operator hierarchical::Static<std::uint64_t, 1>() const
         {
-            return hc::Hash(str);
+            return Hash(str);
         }
 
         /*template<myakish::Size Capacity>
@@ -46,9 +46,7 @@ namespace hv::handle
     }*/
 }
 
-
-
-namespace hv::literals
+namespace myakish::tree::literals
 {
     constexpr handle::StringWrapper operator ""_sk(const char* str, std::size_t count)
     {

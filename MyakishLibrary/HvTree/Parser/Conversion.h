@@ -1,9 +1,9 @@
 #pragma once
 
-#include <HvTree2/Parser/Parser.h>
-#include <HvTree2/Conversion/Conversion.h>
+#include <MyakishLibrary/HvTree/Parser/Parser.h>
+#include <MyakishLibrary/HvTree/Conversion/Conversion.h>
 
-namespace hv::parse
+namespace myakish::tree::parse
 {
     /*template<DataStorage DataType>
     struct StringParserStruct : Converter<DataType>

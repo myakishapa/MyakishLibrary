@@ -1,21 +1,18 @@
 #pragma once
-#include <HvTree2/HvTree.h>
-#include <HvTree2/Array/Array.h>
-#include <HvTree2/Common/ConstexprHash.h>
+#include <MyakishLibrary/HvTree/HvTree.h>
+#include <MyakishLibrary/HvTree/Array/Array.h>
 
 #include <array>
 #include <compare>
 
-namespace hv::handle
+namespace myakish::tree::handle
 {
     namespace hierarchical
     {
-        
-        template<myakish::meta::TriviallyCopyable Word>
+        template<meta::TriviallyCopyable Word>
         struct Family {};
         
-       
-        template<myakish::meta::TriviallyCopyable Word, myakish::Size Size>
+        template<meta::TriviallyCopyable Word, Size Size>
         struct Static
         {
             std::array<Word, Size> data;
@@ -102,7 +99,7 @@ namespace hv::handle
             }*/
         }; 
 
-        template<myakish::meta::TriviallyCopyable Word>
+        /*template<myakish::meta::TriviallyCopyable Word>
         auto ElementHandle(hv::handle::FamilyTag<Family<Word>> tag, hv::array::IndexType index)
         {
             return Static<Word, 1>{ index };
@@ -112,7 +109,7 @@ namespace hv::handle
         auto SizeHandle(hv::handle::FamilyTag<Family<Word>> tag)
         {
             return Static<Word, 1>{ hc::Hash("size") };
-        }
+        }*/
     }
 
     template<myakish::meta::TriviallyCopyable Word, myakish::Size Size>
