@@ -12,7 +12,7 @@
 
 #include <MyakishLibrary/Any.hpp>
 
-namespace dg
+namespace myakish::dependency_graph
 {
     template<typename Type>
     struct CreateTraits
@@ -35,7 +35,7 @@ namespace dg
 
             std::uint64_t externalDependencies;
 
-            myakish::Any value;
+            Any value;
         };
 
     public:
@@ -62,38 +62,22 @@ namespace dg
 
             ExternalReference operator=(const ExternalReference&) = delete;
 
-            T& Get()
-            {
-                return node.value.Get<T>();
-            }
-            const T& Get() const
+            T& Get() const
             {
                 return node.value.Get<T>();
             }
 
-            operator T& ()
-            {
-                return Get();
-            }
-            operator const T& () const
+            operator T& () const
             {
                 return Get();
             }
 
-            T* operator->()
-            {
-                return &Get();
-            }
-            const T* operator->() const
+            T* operator->() const
             {
                 return &Get();
             }
 
-            T& operator*()
-            {
-                return Get();
-            }
-            const T& operator*() const
+            T& operator*() const
             {
                 return Get();
             }
