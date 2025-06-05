@@ -15,7 +15,7 @@
 namespace myakish::dependency_graph
 {
     template<typename Type>
-    struct CreateTraits
+    struct DefaultCreateTraits
     {
         template<typename CreateArgs, typename DependencyProvider>
         static myakish::Any Create(CreateArgs, DependencyProvider&&)
@@ -24,7 +24,7 @@ namespace myakish::dependency_graph
         }
     };
 
-    template<typename Handle, typename CreateArguments>
+    template<typename Handle, typename CreateArguments, template<typename> typename CreateTraits = DefaultCreateTraits>
     class Graph
     {
         using DependencySet = std::set<Handle>;
