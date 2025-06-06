@@ -5,6 +5,8 @@
 #include <MyakishLibrary/Streams/Common.hpp>
 #include <MyakishLibrary/Streams/Concepts.hpp>
 
+#include <MyakishLibrary/Functional/Pipeline.hpp>
+
 #include <memory>
 #include <map>
 #include <string_view>
@@ -230,4 +232,22 @@ namespace myakish::tree
 
     template<data::Storage StorageType>
     Descriptor(StorageType) -> Descriptor<typename StorageType::NullHandle, StorageType>;
+
+    namespace detail
+    {
+        template<typename Type>
+        struct AcquireFunction
+        {
+            template<handle::Handle Handle, data::Storage StorageType, typename ...Args>
+            decltype(auto) operator()(const Descriptor<Handle, StorageType>& desc, Args&&... args) const
+            {
+                return desc.Acquire<Type>(std::forward<Args>(args)...);
+            }
+        };
+    }
+    template<typename Type>
+    inline constexpr detail::AcquireFunction<Type> Acquire;
 }
+
+template<typename Type>
+inline constexpr bool myakish::functional::EnablePipelineFor<myakish::tree::detail::AcquireFunction<Type>> = true;
