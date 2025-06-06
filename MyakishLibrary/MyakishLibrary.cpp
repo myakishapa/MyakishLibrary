@@ -218,9 +218,9 @@ int main()
             desc = int(index);
         }
 
-        for (auto &&desc : hv::array::Existing(tree))
+        for (auto &&num : hv::array::Existing(tree) | std::views::transform(hv::Acquire<int>))
         {
-            std::print("{} ", int(desc));
+            std::print("{} ", num);
         }
         
         std::println();

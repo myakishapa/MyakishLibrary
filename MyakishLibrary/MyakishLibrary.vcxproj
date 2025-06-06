@@ -77,7 +77,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\Users\User\source\repos\MyakishLibrary;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\libs\boost_1_86_0;C:\Users\User\source\repos\MyakishLibrary</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -93,7 +93,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\Users\User\source\repos\MyakishLibrary;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\libs\boost_1_86_0;C:\Users\User\source\repos\MyakishLibrary</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -109,7 +109,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\Users\myakish\source\repos\myakishapa\MyakishLibrary;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\libs\boost_1_86_0;C:\Users\User\source\repos\MyakishLibrary</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -125,7 +125,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\Users\User\source\repos\MyakishLibrary;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\libs\boost_1_86_0;C:\Users\User\source\repos\MyakishLibrary</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -140,9 +140,21 @@
   <ItemGroup>
     <ClInclude Include="Any.hpp" />
     <ClInclude Include="Core.hpp" />
+    <ClInclude Include="DependencyGraph\Graph.hpp" />
     <ClInclude Include="Enum\Dynamic.hpp" />
     <ClInclude Include="Enum\BitwiseOperators.hpp" />
     <ClInclude Include="Functional\Pipeline.hpp" />
+    <ClInclude Include="HvTree\Array\Array.hpp" />
+    <ClInclude Include="HvTree\Conversion\Conversion.hpp" />
+    <ClInclude Include="HvTree\Data\DedicatedAllocation.hpp" />
+    <ClInclude Include="HvTree\Handle\CombinedHashHandle.hpp" />
+    <ClInclude Include="HvTree\Handle\HierarchicalHandle.hpp" />
+    <ClInclude Include="HvTree\Handle\StringWrapper.hpp" />
+    <ClInclude Include="HvTree\Handle\WrapperComposition.hpp" />
+    <ClInclude Include="HvTree\HvTree.hpp" />
+    <ClInclude Include="HvTree\Parser\Conversion.hpp" />
+    <ClInclude Include="HvTree\Parser\Parser.hpp" />
+    <ClInclude Include="HvTree\Parser\Spirit.hpp" />
     <ClInclude Include="Math\Common.hpp" />
     <ClInclude Include="Meta\Concepts.hpp" />
     <ClInclude Include="Meta\Functions.hpp" />
