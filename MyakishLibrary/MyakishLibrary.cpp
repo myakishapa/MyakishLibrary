@@ -26,13 +26,39 @@
 #include <MyakishLibrary/HvTree/Handle/HierarchicalHandle.hpp>
 #include <MyakishLibrary/HvTree/Handle/StringWrapper.hpp>
 #include <MyakishLibrary/HvTree/Data/DedicatedAllocation.hpp>
+#include <MyakishLibrary/HvTree/Array/Array.hpp>
+
+#include <MyakishLibrary/DependencyGraph/Graph.hpp>
 
 namespace st2 = myakish::streams;
 namespace hv = myakish::tree;
+namespace dg = myakish::dependency_graph;
 
 using namespace myakish::functional::operators;
 using namespace hv::literals;
- 
+using namespace std::literals;
+
+struct pes
+{
+    template<typename Tree>
+    pes(int i1, Tree tree, int i2)
+    {
+        std::println("{} {}", i1 + i2, tree.Acquire<std::string>());
+    }
+};
+
+template<>
+struct dg::DefaultCreateTraits<pes>
+{
+    template<typename CreateArgs, typename DependencyProvider>
+    static myakish::Any Create(CreateArgs tree, DependencyProvider&& prov)
+    {
+        auto& first = prov.Acquire<int>(tree["first"_sk].Acquire<std::string>());
+        auto& second = prov.Acquire<int>(tree["second"_sk].Acquire<std::string>());
+        return myakish::Any::Create<pes>(first, tree["str"_sk], second);
+    }
+};
+
 
 int main()
 {
@@ -144,18 +170,60 @@ int main()
         std::println();
     }
 
+    using PesHandle = hv::handle::hierarchical::FixedCapacity<std::uint64_t, 8>;
+    using PesData = hv::data::DedicatedAllocationStorage<PesHandle>;
+    
     {
-        using PesHandle = hv::handle::hierarchical::FixedCapacity<std::uint64_t, 8>;
-        using PesData = hv::data::DedicatedAllocationStorage<PesHandle>;
 
         PesData data;
         hv::Descriptor tree(data);
-
+        
         //auto pes = Resolve(hv::handle::FamilyTag<hv::handle::HandleFamily<PesHandle>>{}, 1_aa);
 
         tree["apa"_sk]["pes"_sk] = 1337;
 
         std::println("{}", tree["apa"_sk / "pes"_sk].Acquire<int>());
+    }
+
+    {
+        PesData data;
+        hv::Descriptor test(data);
+
+        test["first"_sk] = "int1"s;
+        test["second"_sk] = "int2"s;
+        test["str"_sk] = "apapes"s;
+
+        dg::Graph<std::string, decltype(test)> graph;
+
+        graph.EmplaceNode<int>("int1", 1);
+        graph.EmplaceNode<int>("int2", 2);
+
+        graph.SetDependencies("pes", test);
+
+
+        auto apa = graph.Acquire<pes>("pes");
+
+        std::println("");
+
+    }
+
+    {
+        PesData data;
+        hv::Descriptor tree(data);
+
+        auto test = hv::array::MakeArrayIndex<PesData::HandleFamily>(0);
+
+        for (auto [index, desc] : hv::array::Range(tree, 0, 20) | std::views::enumerate)
+        {
+            desc = int(index);
+        }
+
+        for (auto &&desc : hv::array::Existing(tree))
+        {
+            std::print("{} ", int(desc));
+        }
+        
+        std::println();
     }
 }
 

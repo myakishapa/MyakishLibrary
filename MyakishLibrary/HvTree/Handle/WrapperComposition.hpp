@@ -17,7 +17,7 @@ namespace myakish::tree::handle
         template<typename Family, std::size_t... Indices>
         auto ResolveComposition(std::index_sequence<Indices...>) const
         {
-            return (... / (Resolve(FamilyTag<Family>{}, std::get<Indices>(wrappers) )) );
+            return (... / (Resolve(Family{}, std::get<Indices>(wrappers) )) );
         }
 
         template<typename Family, std::size_t... Indices>
@@ -52,7 +52,7 @@ namespace myakish::tree::handle
     }
 
     template<typename Family, typename ...Args>
-    auto Resolve(FamilyTag<Family>, WrapperComposition<Args...> handle)
+    auto ResolveADL(Family, WrapperComposition<Args...> handle)
     {
         return handle.ResolveComposition<Family>();
     }

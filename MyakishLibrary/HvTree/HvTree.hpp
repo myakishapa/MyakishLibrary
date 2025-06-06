@@ -114,21 +114,32 @@ namespace myakish::tree
 
 
         struct CantResolve {};
-
-        template<typename Family>
-        struct FamilyTag {};
         
         template<typename Family, typename Type>
-        CantResolve Resolve(FamilyTag<Family>, Type)
+        CantResolve ResolveADL(Family, Type)
         {
             return {};
         }
 
         template<typename Family, HandleOf<Family> HandleType>
-        HandleType Resolve(FamilyTag<Family>, HandleType handle)
+        HandleType ResolveADL(Family, HandleType handle)
         {
             return handle;
         }
+
+        namespace detail
+        {
+            struct ResolveFunction
+            {
+                template<typename Family, typename Type>
+                auto operator()(Family, Type wrapper) const
+                {
+                    return ResolveADL(Family{}, std::move(wrapper));
+                }
+            };
+        }
+
+        inline constexpr detail::ResolveFunction Resolve;
     }
 
     
@@ -159,9 +170,9 @@ namespace myakish::tree
 
        
         template<typename Arg>
-        auto Subtree(Arg&& handle) const
+        auto Subtree(Arg&& arg) const
         {
-            return Descriptor(*data, base / Resolve(handle::FamilyTag<HandleFamily>{}, std::forward<Arg>(handle)));
+            return Descriptor(*data, base / handle::Resolve(HandleFamily{}, std::forward<Arg>(arg)));
         }
 
         template<typename Arg>

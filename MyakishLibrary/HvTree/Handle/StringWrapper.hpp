@@ -30,12 +30,12 @@ namespace myakish::tree::handle
     template<>
     struct EnableWrapper<StringWrapper> : std::true_type {};
 
-    hierarchical::Static<std::uint64_t, 1> Resolve(FamilyTag<hierarchical::Family<std::uint64_t>>, StringWrapper wrapper)
+    hierarchical::Static<std::uint64_t, 1> ResolveADL(hierarchical::Family<std::uint64_t>, StringWrapper wrapper)
     {
         return wrapper;
     }
 
-    hierarchical::Static<std::string_view, 1> Resolve(FamilyTag<hierarchical::Family<std::string_view>>, StringWrapper wrapper)
+    hierarchical::Static<std::string_view, 1> ResolveADL(hierarchical::Family<std::string_view>, StringWrapper wrapper)
     {
         return wrapper.str;
     }

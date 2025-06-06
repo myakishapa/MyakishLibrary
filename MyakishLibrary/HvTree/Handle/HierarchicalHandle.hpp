@@ -22,12 +22,21 @@ namespace myakish::tree::handle
             template<std::convertible_to<Word> ...Words> requires(sizeof...(Words) == Size)
             Static(Words ...words) : data{ static_cast<Word>(words)... } {}
 
+            template<myakish::Size SourceSize> requires(SourceSize <= Size)
+                Static(Static<Word, SourceSize> staticHandle)
+            {
+                std::ranges::copy(staticHandle.data, data.begin());
+
+                // std::memcpy(data.data(), staticHandle.data.data(), sizeof(Word) * SourceSize);
+            }
+
             template<myakish::Size RhsSize>
             auto operator/(Static<Word, RhsSize> rhs) const -> Static<Word, Size + RhsSize>
             {
-                Static<Word, Size + RhsSize> result{};
-                std::memcpy(result.data.data(), data.data(), sizeof(Word) * Size);
-                std::memcpy(result.data.data() + Size, rhs.data.data(), sizeof(Word) * RhsSize);
+                Static<Word, Size + RhsSize> result(*this);
+
+                std::ranges::copy(rhs.data, result.data.begin() + Size);
+
                 return result;
             }
 
@@ -62,21 +71,27 @@ namespace myakish::tree::handle
             template<myakish::Size SourceSize> requires(SourceSize <= Capacity)
             FixedCapacity(Static<Word, SourceSize> staticHandle) : size(SourceSize)
             {
-                std::memcpy(data.data(), staticHandle.data.data(), sizeof(Word) * SourceSize);
+                std::ranges::copy(staticHandle.data, data.begin());
+                
+                // std::memcpy(data.data(), staticHandle.data.data(), sizeof(Word) * SourceSize);
             }
 
             template<myakish::Size SourceCapacity>
             FixedCapacity(FixedCapacity<Word, SourceCapacity> rhs) : size(rhs.size)
             {
-                std::memcpy(data.data(), rhs.data.data(), sizeof(Word) * size);
+                std::ranges::copy(rhs.data | std::views::take(rhs.size), data.begin());
+
+                //std::memcpy(data.data(), rhs.data.data(), sizeof(Word) * size);
             }
 
             FixedCapacity operator/(FixedCapacity rhs) const
             {
-                FixedCapacity result;
-                std::memcpy(result.data.data(), data.data(), sizeof(Word) * size);
-                std::memcpy(result.data.data() + size, rhs.data.data(), sizeof(Word) * rhs.size);
+                FixedCapacity result(*this);
+                
+                std::ranges::copy(rhs.data | std::views::take(rhs.size), result.data.begin() + size);
+
                 result.size = size + rhs.size;
+
                 return result;
             }
 
@@ -98,6 +113,12 @@ namespace myakish::tree::handle
                 return Size <=> RhsSize;
             }*/
         }; 
+
+        template<meta::TriviallyCopyable Word>
+        Static<Word, 1> ArrayIndex(Family<Word>, Size index)
+        {
+            return { index };
+        }
 
         /*template<myakish::meta::TriviallyCopyable Word>
         auto ElementHandle(hv::handle::FamilyTag<Family<Word>> tag, hv::array::IndexType index)
