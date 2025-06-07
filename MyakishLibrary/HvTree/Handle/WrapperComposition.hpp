@@ -27,29 +27,39 @@ namespace myakish::tree::handle
         }
     };
 
+    template<typename Type>
+    inline constexpr bool EnableComposition = false;
+
+    template<Handle Type>
+    inline constexpr bool EnableComposition<Type> = true;
+
+    template<typename Type>
+    concept Composable = EnableComposition<Type>;
+
     template<typename ...LhsWrappers, typename ...RhsWrappers>
     auto operator/(WrapperComposition<LhsWrappers...> lhs, WrapperComposition<RhsWrappers...> rhs) -> WrapperComposition<LhsWrappers..., RhsWrappers...>
     {
         return { std::tuple_cat(lhs.wrappers, rhs.wrappers) };
     }
 
-    template<typename ...LhsWrappers, WrapperOrHandle Rhs>
+    template<typename ...LhsWrappers, Composable Rhs>
     auto operator/(WrapperComposition<LhsWrappers...> lhs, Rhs rhs) -> WrapperComposition<LhsWrappers..., Rhs>
     {
         return { std::tuple_cat(lhs.wrappers, std::tie(rhs)) };
     }
 
-    template<WrapperOrHandle Lhs, typename ...LhsWrappers>
+    template<Composable Lhs, typename ...LhsWrappers>
     auto operator/(Lhs lhs, WrapperComposition<LhsWrappers...> rhs) -> WrapperComposition<Lhs, LhsWrappers...>
     {
         return { std::tuple_cat(std::tie(rhs), lhs.wrappers) };
     }
 
-    template<Wrapper Lhs, Wrapper Rhs>
+    template<Composable Lhs, Composable Rhs>
     auto operator/(Lhs lhs, Rhs rhs) -> WrapperComposition<Lhs, Rhs>
     {
         return { std::tie(lhs, rhs) };
     }
+
 
     template<typename Family, typename ...Args>
     auto ResolveADL(Family, WrapperComposition<Args...> handle)

@@ -171,10 +171,18 @@ int main()
         std::println();
     }
 
-    using PesHandle = hv::handle::hierarchical::FixedCapacity<std::string, 8>;
+    using PesHandle = hv::handle::hierarchical::Dynamic<std::string>;
     using PesData = hv::data::DedicatedAllocationStorage<PesHandle>;
     
     {
+        static_assert(hv::handle::HandleOf<hv::handle::hierarchical::Static<std::string, 1>, hv::handle::hierarchical::Family<std::string>>, "");
+        static_assert(hv::handle::Wrapper<hv::handle::hierarchical::Static<std::string, 1>, hv::handle::hierarchical::Family<std::string>>, "");
+
+        
+
+        auto test = hv::handle::Resolve(hv::handle::hierarchical::Family<std::string>{}, hv::handle::hierarchical::Static<std::string, 2>{} );
+
+        auto h = PesHandle(test);
 
         PesData data;
         hv::Descriptor tree(data);

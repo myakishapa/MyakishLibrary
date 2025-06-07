@@ -110,7 +110,6 @@ namespace myakish::tree::data
     {
     public:
 
-        using NullHandle = Handle;
         using HandleFamily = handle::HandleFamily<Handle>;
         using Entry = DedicatedAllocationEntry;
 

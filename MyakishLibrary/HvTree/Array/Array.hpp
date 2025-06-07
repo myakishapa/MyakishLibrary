@@ -40,8 +40,8 @@ namespace myakish::tree::array
     {
         struct InfiniteFunctor
         {
-            template<handle::Handle Handle, data::Storage StorageType>
-            auto operator()(Descriptor<Handle, StorageType> descriptor) const
+            template<data::Storage StorageType, handle::Wrapper<typename StorageType::HandleFamily> Handle>
+            auto operator()(const Descriptor<StorageType, Handle>& descriptor) const
             {
                 return Indices<typename StorageType::HandleFamily>
                     | std::views::transform([=](auto index) { return descriptor[index]; });
@@ -54,8 +54,8 @@ namespace myakish::tree::array
     {
         struct RangeFunctor
         {
-            template<handle::Handle Handle, data::Storage StorageType>
-            auto operator()(Descriptor<Handle, StorageType> descriptor, Size begin, Size count = std::numeric_limits<Size>::max()) const
+            template<data::Storage StorageType, handle::Wrapper<typename StorageType::HandleFamily> Handle>
+            auto operator()(const Descriptor<StorageType, Handle>& descriptor, Size begin, Size count = std::numeric_limits<Size>::max()) const
             {
                 return Infinite(descriptor) | std::views::drop(begin) | std::views::take(count);
             }
@@ -67,8 +67,8 @@ namespace myakish::tree::array
     {
         struct ExistingFunctor
         {
-            template<handle::Handle Handle, data::Storage StorageType>
-            auto operator()(Descriptor<Handle, StorageType> descriptor) const
+            template<data::Storage StorageType, handle::Wrapper<typename StorageType::HandleFamily> Handle>
+            auto operator()(const Descriptor<StorageType, Handle>& descriptor) const
             {
                 return Infinite(descriptor)
                     | std::views::take_while([](auto desc) { return desc.Exists(); });

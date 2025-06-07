@@ -21,14 +21,14 @@ namespace myakish::tree::handle
         }
 
         /*template<myakish::Size Capacity>
-        operator hierarchical::FixedCapacity<std::uint64_t, Capacity>() const
+        operator hierarchical::Dynamic<std::uint64_t, Capacity>() const
         {
             return { hc::Hash(str) };
         }*/
     };
 
     template<>
-    struct EnableWrapper<StringWrapper> : std::true_type {};
+    inline constexpr bool EnableComposition<StringWrapper> = true;
 
     hierarchical::Static<std::uint64_t, 1> ResolveADL(hierarchical::Family<std::uint64_t>, StringWrapper wrapper)
     {

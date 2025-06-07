@@ -3,6 +3,7 @@
 #include <MyakishLibrary/HvTree/Array/Array.hpp>
 
 #include <array>
+#include <vector>
 #include <compare>
 
 namespace myakish::tree::handle
@@ -22,34 +23,32 @@ namespace myakish::tree::handle
             template<std::convertible_to<Word> ...Words> requires(sizeof...(Words) == Size)
             Static(Words ...words) : data{ static_cast<Word>(words)... } {}
 
-            template<myakish::Size SourceSize> requires(SourceSize <= Size)
-                Static(Static<Word, SourceSize> staticHandle)
-            {
-                std::ranges::copy(staticHandle.data, data.begin());
-
-                // std::memcpy(data.data(), staticHandle.data.data(), sizeof(Word) * SourceSize);
-            }
-
             template<myakish::Size RhsSize>
-            auto operator/(Static<Word, RhsSize> rhs) const -> Static<Word, Size + RhsSize>
+            auto operator/(const Static<Word, RhsSize> &rhs) const -> Static<Word, Size + RhsSize>
             {
-                Static<Word, Size + RhsSize> result(*this);
+                Static<Word, Size + RhsSize> result;
 
+                std::ranges::copy(data, result.data.begin());
                 std::ranges::copy(rhs.data, result.data.begin() + Size);
 
                 return result;
             }
 
-            std::strong_ordering operator<=>(Static rhs) const
+            std::strong_ordering operator<=>(const Static &rhs) const
             {
                 return data <=> rhs.data;
             }
 
-            template<myakish::Size RhsSize>
+            bool operator==(const Static& rhs) const
+            {
+                return data == rhs.data;
+            }
+
+            /*template<myakish::Size RhsSize>
             std::strong_ordering operator<=>(Static<Word, RhsSize> rhs) const
             {
                 return Size <=> RhsSize;
-            }
+            }*/
 
             operator Word() const requires(Size == 1)
             {
@@ -57,54 +56,43 @@ namespace myakish::tree::handle
             }
         };
 
-        template<typename Word, myakish::Size Capacity>
-        struct FixedCapacity
+        template<typename Word>
+        struct Dynamic
         {
-            std::array<Word, Capacity> data;
-            myakish::Size size;
+            std::vector<Word> data;
 
-            FixedCapacity() : size(0), data{} {}
+            Dynamic() : data{} {}
 
-            template<std::convertible_to<Word> ...Words> requires(sizeof...(Words) <= Capacity)
-            FixedCapacity(Words ...words) : size(sizeof...(Words)), data{ static_cast<Word>(words)... } {}
+            template<std::convertible_to<Word> ...Words>
+            Dynamic(Words ...words) : data{ static_cast<Word>(words)... } {}
 
-            template<myakish::Size SourceSize> requires(SourceSize <= Capacity)
-            FixedCapacity(Static<Word, SourceSize> staticHandle) : size(SourceSize)
+            template<myakish::Size SourceSize>
+            Dynamic(const Static<Word, SourceSize> &staticHandle) : data(std::from_range, staticHandle.data) {}
+
+            Size Length() const
             {
-                std::ranges::copy(staticHandle.data, data.begin());
-                
-                // std::memcpy(data.data(), staticHandle.data.data(), sizeof(Word) * SourceSize);
+                return data.size();
             }
 
-            template<myakish::Size SourceCapacity>
-            FixedCapacity(FixedCapacity<Word, SourceCapacity> rhs) : size(rhs.size)
+            Dynamic operator/(const Dynamic &rhs) const
             {
-                std::ranges::copy(rhs.data | std::views::take(rhs.size), data.begin());
-
-                //std::memcpy(data.data(), rhs.data.data(), sizeof(Word) * size);
-            }
-
-            FixedCapacity operator/(FixedCapacity rhs) const
-            {
-                FixedCapacity result(*this);
+                Dynamic result(*this);
                 
-                std::ranges::copy(rhs.data | std::views::take(rhs.size), result.data.begin() + size);
-
-                result.size = size + rhs.size;
+                result.data.append_range(rhs.data);
 
                 return result;
             }
 
 
-            std::strong_ordering operator<=>(FixedCapacity rhs) const
+            std::strong_ordering operator<=>(const Dynamic& rhs) const
             {
-                if (size != rhs.size) return size <=> rhs.size;
+                if (Length() != rhs.Length()) return Length() <=> rhs.Length();
                 return data <=> rhs.data;
             }
 
-            bool operator==(FixedCapacity rhs) const
+            bool operator==(const Dynamic& rhs) const
             {
-                return size == rhs.size && data == rhs.data;
+                return Length() == rhs.Length() && data == rhs.data;
             }
 
             /*template<myakish::Size RhsSize>
@@ -145,8 +133,8 @@ namespace myakish::tree::handle
         using Family = hierarchical::Family<Word>;
     };
 
-    template<typename Word, myakish::Size Capacity>
-    struct FamilyTraits<hierarchical::FixedCapacity<Word, Capacity>>
+    template<typename Word>
+    struct FamilyTraits<hierarchical::Dynamic<Word>>
     {
         using Family = hierarchical::Family<Word>;
     };
