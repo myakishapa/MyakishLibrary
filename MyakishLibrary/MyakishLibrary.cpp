@@ -4,6 +4,7 @@
 #include <format>
 #include <print>
 #include <random>
+#include <string>
 
 #include <MyakishLibrary/Any.hpp>
 
@@ -170,7 +171,7 @@ int main()
         std::println();
     }
 
-    using PesHandle = hv::handle::hierarchical::FixedCapacity<std::uint64_t, 8>;
+    using PesHandle = hv::handle::hierarchical::FixedCapacity<std::string, 8>;
     using PesData = hv::data::DedicatedAllocationStorage<PesHandle>;
     
     {

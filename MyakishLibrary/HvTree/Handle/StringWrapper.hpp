@@ -40,6 +40,11 @@ namespace myakish::tree::handle
         return wrapper.str;
     }
 
+    hierarchical::Static<std::string, 1> ResolveADL(hierarchical::Family<std::string>, StringWrapper wrapper)
+    {
+        return std::string(wrapper.str);
+    }
+
     /*WrapperComposition<StringWrapper, StringWrapper> operator/(StringWrapper lhs, StringWrapper rhs)
     {
         return { { lhs, rhs } };

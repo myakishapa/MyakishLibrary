@@ -9,10 +9,10 @@ namespace myakish::tree::handle
 {
     namespace hierarchical
     {
-        template<meta::TriviallyCopyable Word>
+        template<typename Word>
         struct Family {};
         
-        template<meta::TriviallyCopyable Word, Size Size>
+        template<typename Word, Size Size>
         struct Static
         {
             std::array<Word, Size> data;
@@ -57,7 +57,7 @@ namespace myakish::tree::handle
             }
         };
 
-        template<myakish::meta::TriviallyCopyable Word, myakish::Size Capacity>
+        template<typename Word, myakish::Size Capacity>
         struct FixedCapacity
         {
             std::array<Word, Capacity> data;
@@ -65,7 +65,7 @@ namespace myakish::tree::handle
 
             FixedCapacity() : size(0), data{} {}
 
-            template<std::convertible_to<Word> ...Words>requires(sizeof...(Words) <= Capacity)
+            template<std::convertible_to<Word> ...Words> requires(sizeof...(Words) <= Capacity)
             FixedCapacity(Words ...words) : size(sizeof...(Words)), data{ static_cast<Word>(words)... } {}
 
             template<myakish::Size SourceSize> requires(SourceSize <= Capacity)
@@ -114,11 +114,17 @@ namespace myakish::tree::handle
             }*/
         }; 
 
-        template<meta::TriviallyCopyable Word>
+        template<std::integral Word>
         Static<Word, 1> ArrayIndex(Family<Word>, Size index)
         {
             return { index };
         }
+
+        Static<std::string, 1> ArrayIndex(Family<std::string>, Size index)
+        {
+            return { std::to_string(index) };
+        }
+
 
         /*template<myakish::meta::TriviallyCopyable Word>
         auto ElementHandle(hv::handle::FamilyTag<Family<Word>> tag, hv::array::IndexType index)
@@ -133,13 +139,13 @@ namespace myakish::tree::handle
         }*/
     }
 
-    template<myakish::meta::TriviallyCopyable Word, myakish::Size Size>
+    template<typename Word, myakish::Size Size>
     struct FamilyTraits<hierarchical::Static<Word, Size>>
     {
         using Family = hierarchical::Family<Word>;
     };
 
-    template<myakish::meta::TriviallyCopyable Word, myakish::Size Capacity>
+    template<typename Word, myakish::Size Capacity>
     struct FamilyTraits<hierarchical::FixedCapacity<Word, Capacity>>
     {
         using Family = hierarchical::Family<Word>;
