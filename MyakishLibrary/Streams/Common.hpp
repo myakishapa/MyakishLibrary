@@ -79,10 +79,17 @@ namespace myakish::streams
         {
             return sentinel - data;
         }
+
+        DataType* Data() const
+        {
+            return data;
+        }
     };
-    static_assert(OutputStream<ContiguousStream<false>>, "ContiguousStream must be OutputStream");
+    static_assert(OutputStream<ContiguousStream<false>>, "non-const ContiguousStream must be OutputStream");
     static_assert(InputStream<ContiguousStream<true>>, "const ContiguousStream must be InputStream");
     static_assert(SizedStream<ContiguousStream<true>>, "const ContiguousStream must be SizedStream");
+    static_assert(PersistentDataStream<ContiguousStream<true>>, "const ContiguousStream must be PersistentDataStream");
+    static_assert(!OutputStream<ContiguousStream<true>>, "const ContiguousStream must not be OutputStream");
 
     using ConstContiguosStream = ContiguousStream<true>;
 

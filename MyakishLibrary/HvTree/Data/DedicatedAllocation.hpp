@@ -49,7 +49,7 @@ namespace myakish::tree::data
             DedicatedAllocationEntry& entry;
             Size offset;
 
-            EntryOutputStream(DedicatedAllocationEntry& entry) : entry(entry) {}
+            EntryOutputStream(DedicatedAllocationEntry& entry) : entry(entry), offset{0} {}
 
 
             void Reserve(Size reserve)

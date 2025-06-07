@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <span>
 
 #include <MyakishLibrary/HvTree/HvTree.hpp>
 
@@ -143,6 +144,17 @@ namespace myakish::tree::conversion
             out.Write(AsBytePtr(value.data()), value.size());
         }
     };
+    template<>
+    struct HvToType<std::string_view>
+    {
+        static inline constexpr bool UseBinary = true;
+
+        template<myakish::streams::PersistentDataStream Stream>
+        static std::string_view Convert(Stream&& in)
+        {
+            return std::string_view(reinterpret_cast<const char*>(in.Data()), in.Length());
+        }
+    };
 
     template<>
     struct HvToType<std::string>
@@ -162,5 +174,29 @@ namespace myakish::tree::conversion
     struct TypeToHv<std::string> : public TypeToHv<std::string_view>
     {
 
+    };
+
+    template<meta::TriviallyCopyable SpanType>
+    struct TypeToHv<std::span<SpanType>>
+    {
+        static inline constexpr bool UseBinary = true;
+
+        template<myakish::streams::OutputStream Stream>
+        static void Convert(Stream&& out, std::span<SpanType> bytes)
+        {
+            if constexpr (streams::ReservableStream<Stream>) out.Reserve(bytes.size_bytes());
+            out.Write(AsBytePtr(bytes.data()), bytes.size_bytes());
+        }
+    };
+    template<>
+    struct HvToType<std::span<const std::byte>>
+    {
+        static inline constexpr bool UseBinary = true;
+
+        template<myakish::streams::PersistentDataStream Stream>
+        static std::span<const std::byte> Convert(Stream&& in)
+        {
+            return std::span<const std::byte>(in.Data(), in.Length());
+        }
     };
 }
