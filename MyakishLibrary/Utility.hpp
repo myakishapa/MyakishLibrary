@@ -143,4 +143,13 @@ namespace myakish
     {
         return f ^ s;
     }
+
+
+    template<typename Type>
+    Type FromChars(std::string_view view)
+    {
+        Type result;
+        std::from_chars(view.data(), view.data() + view.size(), result);
+        return result;
+    }
 }

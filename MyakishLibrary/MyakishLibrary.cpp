@@ -220,8 +220,9 @@ int main()
         PesData data;
         hv::Descriptor tree(data);
 
+        
         auto test = hv::array::MakeArrayIndex<PesData::HandleFamily>(0);
-
+        
         for (auto [index, desc] : hv::array::Range(tree, 0, 20) | std::views::enumerate)
         {
             desc = int(index);
@@ -232,6 +233,20 @@ int main()
             std::print("{} ", num);
         }
         
+        std::println();
+    }
+
+    {
+        std::vector<std::string> strs = { "aaa", "aba", "baa", "aab", "bbb", "aa", "aaaa"};
+
+        auto transform = [](auto str) { return str + (char)1; };
+        
+        auto transformed = strs | std::views::transform(transform) | std::ranges::to<std::vector>();
+
+        strs.append_range(transformed);
+
+        std::ranges::sort(strs);
+
         std::println();
     }
 }

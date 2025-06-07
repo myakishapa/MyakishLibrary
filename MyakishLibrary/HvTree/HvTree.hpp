@@ -111,9 +111,40 @@ namespace myakish::tree
                 }
             };
         }
-
         inline constexpr detail::ResolveFunction Resolve;
 
+        namespace detail
+        {
+            struct NextFunction
+            {
+                template<Handle Type>
+                decltype(auto) operator()(const Type& handle) const
+                {
+                    return NextADL(handle);
+                }
+            };
+        }
+        inline constexpr detail::NextFunction Next;
+
+        namespace detail
+        {
+            struct IsChildFunction
+            {
+                template<Handle Type>
+                bool operator()(const Type& parent, const Type& child) const
+                {
+                    return IsChildADL(parent, child);
+                }
+            };
+        }
+        inline constexpr detail::IsChildFunction IsChild;
+
+        template<typename Type>
+        concept LayeredHandle = Handle<Type> && requires(Type handle)
+        {
+            IsChild(handle, handle);
+            { Next(handle) } -> HandleOf<HandleFamily<Type>>;
+        };
 
         struct NullHandle {};
 

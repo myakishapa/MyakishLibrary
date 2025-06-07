@@ -86,6 +86,8 @@ namespace myakish::tree::handle
 
             std::strong_ordering operator<=>(const Dynamic& rhs) const
             {
+                return std::lexicographical_compare_three_way(data.begin(), data.end(), rhs.data.begin(), rhs.data.end());
+
                 if (Length() != rhs.Length()) return Length() <=> rhs.Length();
                 return data <=> rhs.data;
             }
@@ -113,7 +115,32 @@ namespace myakish::tree::handle
             return { std::to_string(index) };
         }
 
+        template<std::integral Word, Size StaticSize>
+        auto NextADL(Static<Word, StaticSize> arg)
+        {
+            arg.data[arg.data.size() - 1]++;
+            return arg;
+        }
 
+        template<std::integral Word>
+        auto NextADL(Dynamic<Word> arg)
+        {
+            arg.data[arg.data.size() - 1]++;
+            return arg;
+        }
+
+        template<Size StaticSize>
+        auto NextADL(Static<std::string, StaticSize> arg)
+        {
+            arg.data[arg.data.size() - 1] += (char)1;
+            return arg;
+        }
+
+        auto NextADL(Dynamic<std::string> arg)
+        {
+            arg.data[arg.data.size() - 1] += (char)1;
+            return arg;
+        }
         /*template<myakish::meta::TriviallyCopyable Word>
         auto ElementHandle(hv::handle::FamilyTag<Family<Word>> tag, hv::array::IndexType index)
         {

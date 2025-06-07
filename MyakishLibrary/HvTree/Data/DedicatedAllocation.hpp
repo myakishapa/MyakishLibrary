@@ -125,7 +125,15 @@ namespace myakish::tree::data
         }
         bool Exists(Handle handle)
         {
-            return entries.contains(handle);
+            return !Children(handle).empty();
+        }
+
+        auto Children(Handle handle)
+        {
+            auto begin = entries.lower_bound(handle);
+            auto next = handle::Next(handle);
+            auto end = entries.upper_bound(next);
+            return std::ranges::subrange(begin, end);
         }
 
         /*
