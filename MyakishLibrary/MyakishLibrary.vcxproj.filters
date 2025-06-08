@@ -137,5 +137,8 @@
     <ClInclude Include="DependencyGraph\Graph.hpp">
       <Filter>Header Files\DependencyGraph</Filter>
     </ClInclude>
+    <ClInclude Include="Functional\ExtensionMethod.hpp">
+      <Filter>Header Files\Functional</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

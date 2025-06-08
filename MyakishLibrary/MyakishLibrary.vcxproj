@@ -143,6 +143,7 @@
     <ClInclude Include="DependencyGraph\Graph.hpp" />
     <ClInclude Include="Enum\Dynamic.hpp" />
     <ClInclude Include="Enum\BitwiseOperators.hpp" />
+    <ClInclude Include="Functional\ExtensionMethod.hpp" />
     <ClInclude Include="Functional\Pipeline.hpp" />
     <ClInclude Include="HvTree\Array\Array.hpp" />
     <ClInclude Include="HvTree\Conversion\Conversion.hpp" />
