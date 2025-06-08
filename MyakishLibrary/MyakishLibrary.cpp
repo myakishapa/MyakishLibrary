@@ -69,7 +69,7 @@ int main()
         //auto out = st2::ContiguousStream(data.data(), data.data() + data.size());
         auto out = data | st2::WriteToRange;
 
-        st2::Write(out, 1337); 
+        out | st2::Write(1337);
         st2::Write(out, 228);
 
         auto in = data | st2::ReadFromRange | st2::Polymorphize;

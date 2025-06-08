@@ -11,6 +11,7 @@
 #include <MyakishLibrary/Utility.hpp>
 
 #include <MyakishLibrary/Functional/Pipeline.hpp>
+#include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 
 namespace fs = std::filesystem;
 
@@ -249,8 +250,10 @@ namespace myakish::streams
     };
     inline constexpr CopyFunctor Copy;
 
-    struct WriteFunctor
+    struct WriteFunctor : functional::ExtensionMethod
     {
+        using functional::ExtensionMethod::operator();
+
         constexpr void operator()(OutputStream auto&& out, myakish::meta::TriviallyCopyable auto value) const
         {
             out.Write(reinterpret_cast<const std::byte*>(&value), sizeof(value));
@@ -548,8 +551,9 @@ inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::A
 template<>
 inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::CopyFunctor> = true;
 
-template<>
+/*template<>
 inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::WriteFunctor> = true;
+*/
 
 template<myakish::meta::TriviallyCopyable Type>
 inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::ReadFunctor<Type>> = true;

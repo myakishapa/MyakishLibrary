@@ -12,20 +12,20 @@ namespace myakish::functional
         struct ExtensionClosure
         {
             Callable&& baseCallable;
-            std::tuple<Args&&> args;
+            std::tuple<Args&&...> argsTuple;
 
-            ExtensionClosure(Callable&& baseCallable, Args&&... args) : baseCallable(std::forward<Callable>(baseCallable)), args(std::forward<Args>(args)...) {}
+            ExtensionClosure(Callable&& baseCallable, Args&&... args) : baseCallable(std::forward<Callable>(baseCallable)), argsTuple(std::forward<Args>(args)...) {}
 
             template<typename Extended, std::size_t ...Indices>
             decltype(auto) Invoke(Extended&& obj, std::index_sequence<Indices...>) const
             {
-                return std::forward<Callable>(baseCallable)(std::forward<Extended>(obj), std::forward<Args>(std::get<Indices>(args))...);
+                return std::forward<Callable>(baseCallable)(std::forward<Extended>(obj), std::forward<Args>(std::get<Indices>(argsTuple))...);
             }
 
             template<typename Extended>
             decltype(auto) operator()(Extended&& obj) const
             {
-                return Invoke(std::forward<Extended>(obj), sizeof...(Args));
+                return Invoke(std::forward<Extended>(obj), std::make_index_sequence<sizeof...(Args)>{});
             }
         };
 
@@ -38,4 +38,8 @@ namespace myakish::functional
 
     template<std::derived_from<ExtensionMethod> ExtensionType>
     inline constexpr bool EnablePipelineFor<ExtensionType> = true;
+
+    template<typename Callable, typename ...Args>
+    inline constexpr bool EnablePipelineFor<ExtensionMethod::ExtensionClosure<Callable, Args...>> = true;
+
 }
