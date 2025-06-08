@@ -52,7 +52,7 @@ namespace myakish::meta
     };
 
 
-    template<template<typename> typename Template, typename T>
+    template<template<typename...> typename Template>
     struct InstanceOf
     {
         template<typename T>

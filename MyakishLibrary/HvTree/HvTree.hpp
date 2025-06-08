@@ -87,8 +87,37 @@ namespace myakish::tree
         template<typename Handle>
         using HandleFamily = typename FamilyTraits<std::remove_cvref_t<Handle>>::Family;
 
+        template<typename Family>
+        struct NullHandle 
+        {
+            constexpr bool operator==(NullHandle) const
+            {
+                return true;
+            }
+        };
+
+        template<typename Family>
+        inline constexpr NullHandle<Family> Null;
+
+        template<typename NullFamily>
+        struct FamilyTraits<NullHandle<NullFamily>>
+        {
+            using Family = NullFamily;
+        };
+
+        template<typename Family, typename Arg>
+        decltype(auto) operator/(NullHandle<Family>, Arg&& arg)
+        {
+            return std::forward<Arg>(arg);
+        }
+        template<typename Family, typename Arg>
+        decltype(auto) operator/(Arg&& arg, NullHandle<Family>)
+        {
+            return std::forward<Arg>(arg);
+        }
+
         template<typename HandleType>
-        concept Handle = std::copyable<std::remove_cvref_t<HandleType>> && !std::same_as<NoFamily, HandleFamily<HandleType>> && std::totally_ordered<std::remove_cvref_t<HandleType>>;
+        concept Handle = std::copyable<std::remove_cvref_t<HandleType>> && !std::same_as<NoFamily, HandleFamily<HandleType>> && std::equality_comparable<std::remove_cvref_t<HandleType>>;
 
         template<typename HandleType, typename Family>
         concept HandleOf = Handle<HandleType> && std::same_as<Family, HandleFamily<HandleType>>;
@@ -140,36 +169,22 @@ namespace myakish::tree
         inline constexpr detail::IsChildFunction IsChild;
 
         template<typename Type>
-        concept LayeredHandle = Handle<Type> && requires(Type handle)
+        concept LayeredHandle = Handle<Type> && std::totally_ordered<std::remove_cvref_t<Type>> && requires(Type handle)
         {
             IsChild(handle, handle);
             { Next(handle) } -> HandleOf<HandleFamily<Type>>;
         };
 
-        struct NullHandle {};
-
-        inline constexpr NullHandle Null;
-
-        template<typename Arg>
-        decltype(auto) operator/(NullHandle, Arg&& arg)
-        {
-            return std::forward<Arg>(arg);
-        }
-        template<typename Arg>
-        decltype(auto) operator/(Arg&& arg, NullHandle)
-        {
-            return std::forward<Arg>(arg);
-        }
 
         template<typename WrapperType, typename Family>
-        concept Wrapper = std::same_as<WrapperType, NullHandle> || requires(WrapperType wrapper, Family familyTag)
+        concept Wrapper = requires(WrapperType wrapper, Family familyTag)
         {
             { Resolve(familyTag, wrapper) } -> HandleOf<Family>;
         };
     }
 
     
-    template<data::Storage StorageType, handle::Wrapper<typename StorageType::HandleFamily> Handle>
+    template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle>
     class Descriptor
     {
     public:
@@ -183,7 +198,7 @@ namespace myakish::tree
 
     public:
 
-        Descriptor(StorageType& data, Handle base) : data(&data), base(base)
+        Descriptor(StorageType& data, const Handle &base) : data(&data), base(base)
         {
 
         }
@@ -199,7 +214,7 @@ namespace myakish::tree
         auto Subtree(Arg&& arg) const
         {
             //trigger CTAD
-            return myakish::tree::Descriptor(*data, handle::Resolve(HandleFamily{}, base / std::forward<Arg>(arg) ));
+            return myakish::tree::Descriptor(*data, base / handle::Resolve(HandleFamily{}, std::forward<Arg>(arg) ) );
         }
 
         template<typename Arg>
@@ -228,7 +243,7 @@ namespace myakish::tree
         }
 
 
-        template<typename Type, typename ...Args>
+        template<typename Type, typename ...Args> requires (!meta::InstanceOf<myakish::tree::Descriptor>::template Func<Type>::value)
         auto Acquire(Args&&... args) const
         {
             if constexpr (conversion::HvToType<Type>::UseBinary)
@@ -247,6 +262,22 @@ namespace myakish::tree
             return Acquire<Type>();
         }
 
+        template<handle::HandleOf<HandleFamily> NewHandle>
+        auto Rebase() const
+        {
+            return myakish::tree::Descriptor(*data, static_cast<NewHandle>(handle::Resolve(HandleFamily{}, base)) );
+        }
+        template<handle::HandleOf<HandleFamily> NewHandle>
+        operator myakish::tree::Descriptor<StorageType, NewHandle>() const
+        {
+            return Rebase<NewHandle>();
+        }
+
+        Handle Base() const
+        {
+            return base;
+        }
+
         bool Exists() const
         {
             return data->Exists(base);
@@ -256,14 +287,16 @@ namespace myakish::tree
     };
 
     template<data::Storage StorageType>
-    Descriptor(StorageType) -> Descriptor<StorageType, handle::NullHandle>;
+    Descriptor(StorageType&) -> Descriptor<StorageType, handle::NullHandle<typename StorageType::HandleFamily>>;
+    template<data::Storage StorageType, handle::Wrapper<typename StorageType::HandleFamily> Handle>
+    Descriptor(StorageType&, const Handle&) -> Descriptor<StorageType, Handle>;
 
     namespace detail
     {
         template<typename Type>
         struct AcquireFunction
         {
-            template<data::Storage StorageType, handle::Wrapper<typename StorageType::HandleFamily> Handle, typename ...Args>
+            template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle, typename ...Args>
             decltype(auto) operator()(const Descriptor<StorageType, Handle>& desc, Args&&... args) const
             {
                 return desc.Acquire<Type>(std::forward<Args>(args)...);

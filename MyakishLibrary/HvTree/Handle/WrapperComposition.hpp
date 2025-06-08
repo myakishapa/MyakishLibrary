@@ -20,7 +20,7 @@ namespace myakish::tree::handle
             return (... / (Resolve(Family{}, std::get<Indices>(wrappers) )) );
         }
 
-        template<typename Family, std::size_t... Indices>
+        template<typename Family>
         auto ResolveComposition() const
         {
             return ResolveComposition<Family>(std::make_index_sequence<sizeof...(Wrappers)>{});

@@ -177,19 +177,24 @@ int main()
     {
         static_assert(hv::handle::HandleOf<hv::handle::hierarchical::Static<std::string, 1>, hv::handle::hierarchical::Family<std::string>>, "");
         static_assert(hv::handle::Wrapper<hv::handle::hierarchical::Static<std::string, 1>, hv::handle::hierarchical::Family<std::string>>, "");
+        static_assert(hv::handle::Wrapper<PesHandle, hv::handle::hierarchical::Family<std::string>>, "");
 
         
+        static_assert(hv::handle::HandleOf<hv::handle::NullHandle<hv::handle::hierarchical::Family<std::string>>, hv::handle::hierarchical::Family<std::string>>, "");
 
-        auto test = hv::handle::Resolve(hv::handle::hierarchical::Family<std::string>{}, hv::handle::hierarchical::Static<std::string, 2>{} );
-
-        auto h = PesHandle(test);
 
         PesData data;
         hv::Descriptor tree(data);
         
         //auto pes = Resolve(hv::handle::FamilyTag<hv::handle::HandleFamily<PesHandle>>{}, 1_aa);
 
-        tree["apa"_sk]["pes"_sk] = 1337;
+        auto t1 = tree[PesHandle("apa")];
+        auto t2 = t1["pes"_sk];
+
+        auto test = hv::handle::Resolve(hv::handle::hierarchical::Family<std::string>{}, t1.Base() / "pes"_sk);
+
+
+        tree[PesHandle("apa")]["pes"_sk] = 1337;
 
         std::println("{}", tree["apa"_sk / "pes"_sk].Acquire<int>());
     }
@@ -220,6 +225,7 @@ int main()
         PesData data;
         hv::Descriptor tree(data);
 
+        constexpr auto asdf = myakish::meta::InstanceOf<myakish::tree::Descriptor>::template Func<decltype(tree)>::value;
         
         auto test = hv::array::MakeArrayIndex<PesData::HandleFamily>(0);
         
