@@ -140,5 +140,8 @@
     <ClInclude Include="Functional\ExtensionMethod.hpp">
       <Filter>Header Files\Functional</Filter>
     </ClInclude>
+    <ClInclude Include="Meta\Meta2.hpp">
+      <Filter>Header Files\Meta</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

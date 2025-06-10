@@ -294,10 +294,10 @@ namespace myakish::tree
     namespace detail
     {
         template<typename Type>
-        struct AcquireFunction
+        struct AcquireFunction : functional::ExtensionMethod
         {
             template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle, typename ...Args>
-            decltype(auto) operator()(const Descriptor<StorageType, Handle>& desc, Args&&... args) const
+            decltype(auto) ExtensionInvoke(const Descriptor<StorageType, Handle>& desc, Args&&... args) const
             {
                 return desc.Acquire<Type>(std::forward<Args>(args)...);
             }
@@ -306,6 +306,3 @@ namespace myakish::tree
     template<typename Type>
     inline constexpr detail::AcquireFunction<Type> Acquire;
 }
-
-template<typename Type>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::tree::detail::AcquireFunction<Type>> = true;

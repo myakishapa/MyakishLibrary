@@ -2,6 +2,7 @@
 #include <MyakishLibrary/HvTree/HvTree.hpp>
 
 #include <MyakishLibrary/Functional/Pipeline.hpp>
+#include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 
 #include <ranges>
 #include <numeric>
@@ -22,9 +23,9 @@ namespace myakish::tree::array
     namespace detail
     {
         template<typename Family>
-        struct MakeArrayIndexerFunctor
+        struct MakeArrayIndexerFunctor : functional::ExtensionMethod
         {
-            auto operator()(Size index) const
+            auto ExtensionInvoke(Size index) const
             {
                 return ArrayIndex(Family{}, index);
             }
@@ -38,10 +39,10 @@ namespace myakish::tree::array
     
     namespace detail
     {
-        struct InfiniteFunctor
+        struct InfiniteFunctor : functional::ExtensionMethod
         {
             template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle>
-            auto operator()(const Descriptor<StorageType, Handle>& descriptor) const
+            auto ExtensionInvoke(const Descriptor<StorageType, Handle>& descriptor) const
             {
                 return Indices<typename StorageType::HandleFamily>
                     | std::views::transform([=](auto index) { return descriptor[index]; });
@@ -52,10 +53,10 @@ namespace myakish::tree::array
 
     namespace detail
     {
-        struct RangeFunctor
+        struct RangeFunctor : functional::ExtensionMethod
         {
             template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle>
-            auto operator()(const Descriptor<StorageType, Handle>& descriptor, Size begin, Size count = std::numeric_limits<Size>::max()) const
+            auto ExtensionInvoke(const Descriptor<StorageType, Handle>& descriptor, Size begin, Size count = std::numeric_limits<Size>::max()) const
             {
                 return Infinite(descriptor) | std::views::drop(begin) | std::views::take(count);
             }
@@ -65,10 +66,10 @@ namespace myakish::tree::array
 
     namespace detail
     {
-        struct ExistingFunctor
+        struct ExistingFunctor : functional::ExtensionMethod
         {
             template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle>
-            auto operator()(const Descriptor<StorageType, Handle>& descriptor) const
+            auto ExtensionInvoke(const Descriptor<StorageType, Handle>& descriptor) const
             {
                 return Infinite(descriptor)
                     | std::views::take_while([](auto desc) { return desc.Exists(); });
@@ -77,13 +78,3 @@ namespace myakish::tree::array
     }
     inline constexpr detail::ExistingFunctor Existing;
 }
-
- 
-
-template<typename Family>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::tree::array::detail::MakeArrayIndexerFunctor<Family>> = true;
-template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::tree::array::detail::InfiniteFunctor> = true;
-template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::tree::array::detail::ExistingFunctor> = true;
-

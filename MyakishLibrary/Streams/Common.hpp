@@ -148,14 +148,16 @@ namespace myakish::streams
     static_assert(InputStream<AlignableWrapper<ExpositionOnlyStream>>, "AlignableWrapper must be InputStream");
     static_assert(ReservableStream<AlignableWrapper<ExpositionOnlyStream>>, "AlignableWrapper must be ReservableStream");
 
-    struct Aligner
+    struct Aligner : functional::ExtensionMethod
     {
-        auto operator()(Stream auto stream) const
+        using functional::ExtensionMethod::operator();
+
+        auto ExtensionInvoke(Stream auto stream) const
         {
             return AlignableWrapper(std::move(stream));
         }
 
-        auto operator()(AlignableStream auto alignable) const
+        auto ExtensionInvoke(AlignableStream auto alignable) const
         {
             return alignable;
         }
@@ -239,9 +241,9 @@ namespace myakish::streams
     };
     static_assert(InputStream<FileInputStream>, "FileInputStream must be RandomAccessBinaryInput");
     
-    struct CopyFunctor
+    struct CopyFunctor : functional::ExtensionMethod
     {
-        constexpr void operator()(InputStream auto&& in, OutputStream auto&& out, Size bytes) const
+        constexpr void ExtensionInvoke(InputStream auto&& in, OutputStream auto&& out, Size bytes) const
         {
             std::vector<std::byte> buffer(bytes);
             in.Read(buffer.data(), bytes);
@@ -252,14 +254,12 @@ namespace myakish::streams
 
     struct WriteFunctor : functional::ExtensionMethod
     {
-        using functional::ExtensionMethod::operator();
-
-        constexpr void operator()(OutputStream auto&& out, myakish::meta::TriviallyCopyable auto value) const
+        constexpr void ExtensionInvoke(OutputStream auto&& out, myakish::meta::TriviallyCopyable auto value) const
         {
             out.Write(reinterpret_cast<const std::byte*>(&value), sizeof(value));
         }
 
-        constexpr void operator()(OutputStream auto&& out, std::string_view str) const
+        constexpr void ExtensionInvoke(OutputStream auto&& out, std::string_view str) const
         {
             out.Write(reinterpret_cast<const std::byte*>(str.data()), str.size());
         }
@@ -267,9 +267,9 @@ namespace myakish::streams
     inline constexpr WriteFunctor Write;
 
     template<myakish::meta::TriviallyCopyable Type>
-    struct ReadFunctor
+    struct ReadFunctor : functional::ExtensionMethod
     {
-        constexpr Type operator()(InputStream auto&& in) const
+        constexpr Type ExtensionInvoke(InputStream auto&& in) const
         {
             Type result;
             in.Read(reinterpret_cast<std::byte*>(&result), sizeof(result));
@@ -279,9 +279,9 @@ namespace myakish::streams
     template<myakish::meta::TriviallyCopyable Type>
     inline constexpr ReadFunctor<Type> Read;
 
-    struct AlignFunctor
+    struct AlignFunctor : functional::ExtensionMethod
     {
-        constexpr void operator()(AlignableStream auto&& stream, Size alignment) const
+        constexpr void ExtensionInvoke(AlignableStream auto&& stream, Size alignment) const
         {
             stream.Seek((alignment - (stream.Offset() % alignment)) % alignment);
         }
@@ -360,9 +360,9 @@ namespace myakish::streams
     template<Stream Underlying>
     PolymorphicStream(Underlying&&) -> PolymorphicStream<Underlying&&>;
 
-    struct Polymorphizer
+    struct Polymorphizer : functional::ExtensionMethod
     {
-        auto operator()(Stream auto &&stream) const
+        auto ExtensionInvoke(Stream auto &&stream) const
         {
             return PolymorphicStream(std::forward<decltype(stream)>(stream));
         }
@@ -495,10 +495,10 @@ namespace myakish::streams
 
     };
 
-    struct ReadFromRangeFunctor
+    struct ReadFromRangeFunctor : functional::ExtensionMethod
     {
         template<std::ranges::contiguous_range Range>
-        auto operator()(Range&& r) const
+        auto ExtensionInvoke(Range&& r) const
         {
             auto data = AsBytePtr(std::ranges::data(r));
             auto size = std::ranges::size(r) * sizeof(std::ranges::range_value_t<Range>);
@@ -507,17 +507,17 @@ namespace myakish::streams
         }
 
         template<std::ranges::input_range Range>
-        auto operator()(Range&& r) const
+        auto ExtensionInvoke(Range&& r) const
         {
             return RangeInputStream(std::forward<Range>(r));
         }
     };
     inline constexpr ReadFromRangeFunctor ReadFromRange;
 
-    struct WriteToRangeFunctor
+    struct WriteToRangeFunctor : functional::ExtensionMethod
     {
         template<std::ranges::contiguous_range Range>
-        auto operator()(Range&& r) const
+        auto ExtensionInvoke(Range&& r) const
         {
             auto data = AsBytePtr(std::ranges::data(r));
             auto size = std::ranges::size(r) * sizeof(std::ranges::range_value_t<Range>);
@@ -526,7 +526,7 @@ namespace myakish::streams
         }
 
         template<std::ranges::range Range>
-        auto operator()(Range&& r) const
+        auto ExtensionInvoke(Range&& r) const
         {
             return RangeOutputStream(std::forward<Range>(r));
         }
@@ -544,28 +544,3 @@ namespace myakish::streams
     };
     //static_assert(std::input_or_output_iterator<StreamIterator<std::byte, ExpositionOnlyStream>>, "StreamIterator must be std::input_or_output_iterator");
 }
-
-template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::Aligner> = true;
-
-template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::CopyFunctor> = true;
-
-/*template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::WriteFunctor> = true;
-*/
-
-template<myakish::meta::TriviallyCopyable Type>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::ReadFunctor<Type>> = true;
-
-template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::AlignFunctor> = true;
-
-template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::ReadFromRangeFunctor> = true;
-
-template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::WriteToRangeFunctor> = true;
-
-template<>
-inline constexpr bool myakish::functional::EnablePipelineFor<myakish::streams::Polymorphizer> = true;

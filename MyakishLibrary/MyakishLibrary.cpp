@@ -107,7 +107,7 @@ int main()
         auto in = std::views::iota(0) | st2::ReadFromRange;  
         auto out = st2::FileOutputStream("test.bin");
         
-        st2::Copy(in, out, 32);
+        in | st2::Copy(out, 32);
     }
 
     {
@@ -208,7 +208,7 @@ int main()
         test["str"_sk] = "apapes"s;
 
         dg::Graph<std::string, decltype(test)> graph;
-
+        
         graph.EmplaceNode<int>("int1", 1);
         graph.EmplaceNode<int>("int2", 2);
 
@@ -224,17 +224,18 @@ int main()
     {
         PesData data;
         hv::Descriptor tree(data);
-
+        
+        
         constexpr auto asdf = myakish::meta::InstanceOf<myakish::tree::Descriptor>::template Func<decltype(tree)>::value;
         
-        auto test = hv::array::MakeArrayIndex<PesData::HandleFamily>(0);
+        //auto test = hv::array::Range(0i64, 20i64)(tree);
         
-        for (auto [index, desc] : hv::array::Range(tree, 0, 20) | std::views::enumerate)
+        for (auto [index, desc] : tree | hv::array::Range(0i64, 20i64) | std::views::enumerate)
         {
             desc = int(index);
         }
 
-        for (auto &&num : hv::array::Existing(tree) | std::views::transform(hv::Acquire<int>))
+        for (auto &&num : tree | hv::array::Existing | std::views::transform(hv::Acquire<int>))
         {
             std::print("{} ", num);
         }

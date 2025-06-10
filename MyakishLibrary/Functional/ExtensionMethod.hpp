@@ -6,6 +6,12 @@
 
 namespace myakish::functional
 {
+    template<typename Type, typename ...Args>
+    concept ExtensionInvocable = requires(Type&& object, Args&&... args)
+    {
+        std::forward<Type>(object).ExtensionInvoke(std::forward<Args>(args)...);
+    };
+
     struct ExtensionMethod
     {
         template<typename Callable, typename ...Args>
@@ -19,7 +25,7 @@ namespace myakish::functional
             template<typename Extended, std::size_t ...Indices>
             decltype(auto) Invoke(Extended&& obj, std::index_sequence<Indices...>) const
             {
-                return std::forward<Callable>(baseCallable)(std::forward<Extended>(obj), std::forward<Args>(std::get<Indices>(argsTuple))...);
+                return std::forward<Callable>(baseCallable).ExtensionInvoke(std::forward<Extended>(obj), std::forward<Args>(std::get<Indices>(argsTuple))...);
             }
 
             template<typename Extended>
@@ -29,10 +35,11 @@ namespace myakish::functional
             }
         };
 
-        template<typename Self, typename ...Args>
+        template<typename Self, typename ...Args> requires (!meta::InstanceOf<ExtensionClosure>::Func<Self>::value)
         auto operator()(this Self&& self, Args&&... args)
         {
-            return ExtensionClosure<Self, Args...>(std::forward<Self>(self), std::forward<Args>(args)...);
+            if constexpr (ExtensionInvocable<Self&&, Args&&...>) return self.ExtensionInvoke(std::forward<Args&&>(args)...);
+            else return ExtensionClosure<Self, Args...>(std::forward<Self>(self), std::forward<Args>(args)...);
         }
     };
 

@@ -159,6 +159,7 @@
     <ClInclude Include="Math\Common.hpp" />
     <ClInclude Include="Meta\Concepts.hpp" />
     <ClInclude Include="Meta\Functions.hpp" />
+    <ClInclude Include="Meta\Meta2.hpp" />
     <ClInclude Include="Meta\Pack.hpp" />
     <ClInclude Include="Meta\Tag.hpp" />
     <ClInclude Include="Ranges\Bit.hpp" />
