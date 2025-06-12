@@ -5,6 +5,8 @@
 #include <vector>
 #include <tuple>
 #include <generator>
+#include <filesystem>
+#include <ranges>
 
 #include <MyakishLibrary/Meta/Functions.hpp>
 #include <MyakishLibrary/Core.hpp>
@@ -30,6 +32,18 @@ namespace myakish
 
         return result;
     }
+
+    auto ReadTextFile(std::filesystem::path path)
+    {
+        std::vector<char> result;
+        result.resize(std::filesystem::file_size(path));
+
+        std::ifstream in(path, std::ios::binary);
+        in.read(result.data(), result.size());
+
+        return result;
+    }
+
 
     auto FormatByteSize(Size size)
     {
@@ -152,4 +166,32 @@ namespace myakish
         std::from_chars(view.data(), view.data() + view.size(), result);
         return result;
     }
+
+
+    struct DirectoryRange : std::ranges::view_interface<DirectoryRange>
+    {
+        std::filesystem::path directory;
+
+        auto begin() const
+        {
+            return std::filesystem::directory_iterator(directory);
+        }
+        auto end() const
+        {
+            return std::filesystem::directory_iterator();
+        }
+    };
+    struct RecursiveDirectoryRange : std::ranges::view_interface<RecursiveDirectoryRange>
+    {
+        std::filesystem::path directory;
+
+        auto begin() const
+        {
+            return std::filesystem::recursive_directory_iterator(directory);
+        }
+        auto end() const
+        {
+            return std::filesystem::recursive_directory_iterator();
+        }
+    };
 }
