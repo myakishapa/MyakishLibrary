@@ -172,6 +172,8 @@ namespace myakish
     {
         std::filesystem::path directory;
 
+        DirectoryRange(std::filesystem::path directory) : directory(directory) {}
+
         auto begin() const
         {
             return std::filesystem::directory_iterator(directory);
@@ -184,6 +186,8 @@ namespace myakish
     struct RecursiveDirectoryRange : std::ranges::view_interface<RecursiveDirectoryRange>
     {
         std::filesystem::path directory;
+
+        RecursiveDirectoryRange(std::filesystem::path directory) : directory(directory) {}
 
         auto begin() const
         {

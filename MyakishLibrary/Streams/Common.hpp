@@ -150,8 +150,6 @@ namespace myakish::streams
 
     struct Aligner : functional::ExtensionMethod
     {
-        using functional::ExtensionMethod::operator();
-
         auto ExtensionInvoke(Stream auto stream) const
         {
             return AlignableWrapper(std::move(stream));
@@ -159,7 +157,7 @@ namespace myakish::streams
 
         auto ExtensionInvoke(AlignableStream auto alignable) const
         {
-            return alignable;
+            return std::move(alignable);
         }
     };
     inline constexpr Aligner Aligned;
@@ -226,8 +224,11 @@ namespace myakish::streams
         {
 
         }
+
+        FileOutputStream(FileOutputStream&& rhs) noexcept : path(std::move(rhs.path)), out(std::move(rhs.out)), StandardOutputStream(out) {}
+        FileOutputStream(const FileOutputStream& rhs) = delete;
     };
-    static_assert(OutputStream<FileOutputStream>, "FileInputStream must be RandomAccessBinaryInput");
+    static_assert(OutputStream<FileOutputStream>, "FileInputStream must be OutputStream");
 
     struct FileInputStream : StandardInputStream
     {
@@ -238,8 +239,11 @@ namespace myakish::streams
         {
 
         }
+      
+        FileInputStream(FileInputStream&& rhs) noexcept : path(std::move(rhs.path)), in(std::move(rhs.in)), StandardInputStream(in) {}
+        FileInputStream(const FileInputStream& rhs) = delete;
     };
-    static_assert(InputStream<FileInputStream>, "FileInputStream must be RandomAccessBinaryInput");
+    static_assert(InputStream<FileInputStream>, "FileInputStream must be InputStream");
     
     struct CopyFunctor : functional::ExtensionMethod
     {
@@ -265,6 +269,22 @@ namespace myakish::streams
         }
     };
     inline constexpr WriteFunctor Write;
+
+    template<myakish::meta::TriviallyCopyable Type>
+    struct WriteAsFunctor : functional::ExtensionMethod
+    {
+        constexpr void ExtensionInvoke(OutputStream auto&& out, Type value) const
+        {
+            out.Write(reinterpret_cast<const std::byte*>(&value), sizeof(value));
+        }
+
+        constexpr void ExtensionInvoke(OutputStream auto&& out, std::string_view str) const requires std::same_as<Type, std::string_view>
+        {
+            out.Write(reinterpret_cast<const std::byte*>(str.data()), str.size());
+        }
+    };
+    template<myakish::meta::TriviallyCopyable Type>
+    inline constexpr WriteAsFunctor<Type> WriteAs;
 
     template<myakish::meta::TriviallyCopyable Type>
     struct ReadFunctor : functional::ExtensionMethod
