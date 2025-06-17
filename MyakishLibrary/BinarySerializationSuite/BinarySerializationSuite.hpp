@@ -1,0 +1,240 @@
+#pragma once
+#include <iostream>
+#include <print>
+#include <vector>
+#include <functional>
+#include <string>
+#include <ranges>
+
+#include <MyakishLibrary/Streams/Common.hpp>
+
+#include <MyakishLibrary/Functional/Pipeline.hpp>
+#include <MyakishLibrary/Functional/ExtensionMethod.hpp>
+
+#include <MyakishLibrary/Meta/Concepts.hpp>
+
+
+namespace myakish::binary_serialization_suite
+{
+    template<typename Underlying, typename F>
+    struct ProjectedParser;
+
+
+    struct ParserBase
+    {
+        template<typename Self, typename F>
+        constexpr auto operator[](this Self&& self, F function)
+        {
+            return ProjectedParser(std::move(self), std::move(function));
+        }
+    };
+
+    template<typename Type>
+    concept ParserConcept = std::derived_from<Type, ParserBase>;
+
+    template<typename Underlying, typename F>
+    struct ProjectedParser : ParserBase
+    {
+        Underlying parser;
+        F projection;
+
+        constexpr ProjectedParser(Underlying parser, F projection) : parser(std::move(parser)), projection(std::move(projection)) {}
+
+        template<streams::Stream Stream, typename Attribute> requires std::invocable<F, Attribute>
+        void IO(Stream&& stream, Attribute&& attribute) const
+        {
+            parser.IO(stream, std::invoke(projection, attribute));
+        }
+    };
+
+
+
+    template<typename Factory>
+    struct DynamicParser : ParserBase
+    {
+        Factory factory;
+
+
+        constexpr DynamicParser(Factory factory) : factory(std::move(factory)) {}
+
+        template<streams::Stream Stream, typename Attribute> requires std::invocable<Factory, Attribute>
+        void IO(Stream&& stream, Attribute&& attribute) const
+        {
+            std::invoke(factory, attribute).IO(stream, attribute);
+        }
+    };
+
+    template<typename Type, typename InitProjection, typename ParserProjection>
+    constexpr auto Dynamic(InitProjection initProjection, ParserProjection parserProjection)
+    {
+        return DynamicParser([=](auto&& attrib)
+            {
+                return Type(std::invoke(initProjection, attrib))[parserProjection];
+            });
+    }
+
+
+
+    template<typename Type, typename Attribute>
+    concept AttributeLike = requires(Type attributeLike, Attribute attribute)
+    {
+        attributeLike = attribute;
+        static_cast<Attribute>(attributeLike);
+    };
+
+
+
+    template<typename Type>
+    struct TrivialParser : ParserBase
+    {
+        void IO(streams::InputStream auto&& in, AttributeLike<Type> auto&& value) const
+        {
+            using namespace myakish::functional::operators;
+
+            value = in | streams::Read<Type>;
+        }
+
+        void IO(streams::OutputStream auto&& out, AttributeLike<Type> auto&& value) const
+        {
+            using namespace myakish::functional::operators;
+
+            out | streams::WriteAs<Type>(value);
+        }
+    };
+
+    template<typename Type>
+    inline constexpr TrivialParser<Type> Trivial;
+
+    inline constexpr TrivialParser<int> Int;
+    inline constexpr TrivialParser<myakish::Size> Size;
+
+
+
+    struct RawParser : ParserBase
+    {
+        myakish::Size count;
+
+        constexpr RawParser(myakish::Size count) : count(count) {}
+
+        void IO(streams::InputStream auto&& in, void* ptr) const
+        {
+            in.Read(myakish::AsBytePtr(ptr), count);
+        }
+
+        void IO(streams::OutputStream auto&& out, const void* ptr) const
+        {
+            out.Write(myakish::AsBytePtr(ptr), count);
+        }
+    };
+
+
+
+    template<typename ReadProjection, typename WriteProjection>
+    struct FakeProjection
+    {
+        ReadProjection read;
+        WriteProjection write;
+
+        constexpr FakeProjection(ReadProjection read, WriteProjection write) : read(std::move(read)), write(std::move(write)) {}
+
+        template<typename Attribute>
+        struct Closure
+        {
+            const FakeProjection& projections;
+            Attribute&& attribute;
+
+            constexpr Closure(Attribute&& attribute, const FakeProjection& projections) : attribute(std::forward<Attribute>(attribute)), projections(projections) {}
+
+            operator std::invoke_result_t<ReadProjection, Attribute&&>() const
+            {
+                return std::invoke(projections.read, std::forward<Attribute>(attribute));
+            }
+
+            template<typename Arg> requires std::invocable<WriteProjection, Attribute&&, Arg&&>
+            void operator=(Arg&& arg) const
+            {
+                std::invoke(projections.write, std::forward<Attribute>(attribute), std::forward<Arg>(arg));
+            }
+        };
+
+        template<typename Attribute>
+        constexpr auto operator()(Attribute&& attribute) const
+        {
+            return Closure<Attribute>(std::forward<Attribute>(attribute), *this);
+        }
+    };
+
+    template<typename ReadProjection, typename WriteProjection>
+    FakeProjection(ReadProjection, WriteProjection) -> FakeProjection<ReadProjection, WriteProjection>;
+
+
+
+    template<ParserConcept First, ParserConcept Second>
+    struct SequenceParser : ParserBase
+    {
+        First f;
+        Second s;
+
+        constexpr SequenceParser(First f, Second s) : f(std::move(f)), s(std::move(s)) {}
+
+        template<streams::Stream Stream, typename Attribute>
+        void IO(Stream&& stream, Attribute&& attribute) const
+        {
+            f.IO(stream, attribute);
+            s.IO(stream, attribute);
+        }
+    };
+
+    template<ParserConcept First, ParserConcept Second>
+    constexpr auto operator>>(First f, Second s)
+    {
+        return SequenceParser(std::move(f), std::move(s));
+    }
+
+
+
+    struct Align : ParserBase
+    {
+        myakish::Size alignment;
+        
+        constexpr Align(myakish::Size alignment) : alignment(alignment) {}
+
+        void IO(streams::AlignableStream auto&& stream, auto&&) const
+        {
+            using namespace myakish::functional::operators;
+
+            stream | streams::Align(alignment);
+        }
+    };
+
+
+
+    template<typename Type, typename Parser>
+    struct RuleParser : ParserBase
+    {
+        Parser parser;
+
+        constexpr RuleParser(Parser parser) : parser(std::move(parser)) {}
+
+
+        template<streams::Stream Stream>
+        void IO(Stream&& stream, myakish::meta::SameBase<Type> auto&& attribute) const
+        {
+            parser.IO(stream, attribute);
+        }
+
+        template<streams::InputStream Stream>
+        Type Parse(Stream&& stream)
+        {
+            Type synthesized{};
+            IO(stream, synthesized);
+            return synthesized;
+        }
+    };
+
+    template<typename Type, typename Parser>
+    constexpr auto Rule(Parser parser)
+    {
+        return RuleParser<Type, Parser>(std::move(parser));
+    }
+}

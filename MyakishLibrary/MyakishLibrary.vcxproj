@@ -139,6 +139,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Any.hpp" />
+    <ClInclude Include="BinarySerializationSuite\BinarySerializationSuite.hpp" />
     <ClInclude Include="Core.hpp" />
     <ClInclude Include="DependencyGraph\Graph.hpp" />
     <ClInclude Include="Enum\Dynamic.hpp" />

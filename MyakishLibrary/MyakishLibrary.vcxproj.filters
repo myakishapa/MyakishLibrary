@@ -52,6 +52,9 @@
     <Filter Include="Header Files\DependencyGraph">
       <UniqueIdentifier>{72b61a4e-fb7a-4c94-ba6f-b54aa9db0948}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\BinarySerializationSuite">
+      <UniqueIdentifier>{e473c8d6-2b53-494d-84ef-f73ea2140b7a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MyakishLibrary.cpp">
@@ -142,6 +145,9 @@
     </ClInclude>
     <ClInclude Include="Meta\Meta2.hpp">
       <Filter>Header Files\Meta</Filter>
+    </ClInclude>
+    <ClInclude Include="BinarySerializationSuite\BinarySerializationSuite.hpp">
+      <Filter>Header Files\BinarySerializationSuite</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
