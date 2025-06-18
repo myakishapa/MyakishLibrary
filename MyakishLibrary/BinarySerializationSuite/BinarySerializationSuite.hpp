@@ -1,10 +1,10 @@
 #pragma once
-#include <iostream>
-#include <print>
-#include <vector>
 #include <functional>
-#include <string>
-#include <ranges>
+#include <concepts>
+#include <array>
+#include <utility>
+#include <tuple>
+#include <variant>
 
 #include <MyakishLibrary/Streams/Common.hpp>
 
@@ -16,39 +16,54 @@
 
 namespace myakish::binary_serialization_suite
 {
-    template<typename Underlying, typename F>
+    template<typename Underlying, typename ...Projections>
     struct ProjectedParser;
 
 
     struct ParserBase
     {
-        template<typename Self, typename F>
-        constexpr auto operator[](this Self&& self, F function)
+        template<typename Self, typename Projection>
+        constexpr auto operator[](this Self&& self, Projection projection)
         {
-            return ProjectedParser(std::move(self), std::move(function));
+            return ProjectedParser(std::move(self), std::move(projection));
+        }
+
+        template<typename Self, typename ...Projections>
+        constexpr auto operator()(this Self&& self, Projections... projections)
+        {
+            return ProjectedParser(std::move(self), std::move(projections)...);
         }
     };
 
     template<typename Type>
     concept ParserConcept = std::derived_from<Type, ParserBase>;
 
-    template<typename Underlying, typename F>
+    template<typename Underlying, typename ...Projections>
     struct ProjectedParser : ParserBase
     {
         Underlying parser;
-        F projection;
+        std::tuple<Projections...> projections;
 
-        constexpr ProjectedParser(Underlying parser, F projection) : parser(std::move(parser)), projection(std::move(projection)) {}
+        constexpr ProjectedParser(Underlying parser, Projections... projections) : parser(std::move(parser)), projections(std::move(projections)...) {}
 
-        template<streams::Stream Stream, typename Attribute> requires std::invocable<F, Attribute>
+        template<streams::Stream Stream, typename Attribute> requires (std::invocable<Projections, Attribute> && ...)
         void IO(Stream&& stream, Attribute&& attribute) const
         {
-            parser.IO(stream, std::invoke(projection, attribute));
+            IO(stream, attribute, std::make_index_sequence<sizeof...(Projections)>{});
+            //parser.IO(stream, std::invoke(projection, attribute));
+        }
+
+    private:
+
+        template<streams::Stream Stream, typename Attribute, std::size_t ...Indices>
+        void IO(Stream&& stream, Attribute&& attribute, std::index_sequence<Indices...>) const
+        {
+            parser.IO(stream, std::invoke(std::get<Indices>(projections), attribute)...);
         }
     };
 
 
-
+    /*
     template<typename Factory>
     struct DynamicParser : ParserBase
     {
@@ -72,7 +87,7 @@ namespace myakish::binary_serialization_suite
                 return Type(std::invoke(initProjection, attrib))[parserProjection];
             });
     }
-
+    */
 
 
     template<typename Type, typename Attribute>
@@ -87,6 +102,8 @@ namespace myakish::binary_serialization_suite
     template<typename Type>
     struct TrivialParser : ParserBase
     {
+        using Attribute = Type;
+
         void IO(streams::InputStream auto&& in, AttributeLike<Type> auto&& value) const
         {
             using namespace myakish::functional::operators;
@@ -107,25 +124,23 @@ namespace myakish::binary_serialization_suite
 
     inline constexpr TrivialParser<int> Int;
     inline constexpr TrivialParser<myakish::Size> Size;
+    inline constexpr TrivialParser<std::uint64_t> U64;
 
 
 
     struct RawParser : ParserBase
-    {
-        myakish::Size count;
-
-        constexpr RawParser(myakish::Size count) : count(count) {}
-
-        void IO(streams::InputStream auto&& in, void* ptr) const
+    {       
+        void IO(streams::InputStream auto&& in, void* ptr, myakish::Size count) const
         {
             in.Read(myakish::AsBytePtr(ptr), count);
         }
 
-        void IO(streams::OutputStream auto&& out, const void* ptr) const
+        void IO(streams::OutputStream auto&& out, const void* ptr, myakish::Size count) const
         {
             out.Write(myakish::AsBytePtr(ptr), count);
         }
     };
+    inline constexpr RawParser Raw;
 
 
 
@@ -209,9 +224,11 @@ namespace myakish::binary_serialization_suite
 
 
 
-    template<typename Type, typename Parser>
+    template<typename Type, ParserConcept Parser>
     struct RuleParser : ParserBase
     {
+        using Attribute = Type;
+
         Parser parser;
 
         constexpr RuleParser(Parser parser) : parser(std::move(parser)) {}
@@ -232,9 +249,36 @@ namespace myakish::binary_serialization_suite
         }
     };
 
-    template<typename Type, typename Parser>
+    template<typename Type, ParserConcept Parser>
     constexpr auto Rule(Parser parser)
     {
         return RuleParser<Type, Parser>(std::move(parser));
     }
+
+
+
+    template<myakish::Size Bytes>
+    struct Blob
+    {
+        std::array<std::byte, Bytes> storage;
+    }; 
+
+
+
+    template<typename Type>
+    concept MonomorphicParserConcept = ParserConcept<Type> && requires()
+    {
+        typename Type::Attribute;
+    };
+
+    template<MonomorphicParserConcept Parser>
+    using ParserAttribute = Parser::Attribute;
+
+
+    template<MonomorphicParserConcept... Parsers>
+    struct ParserVariant : ParserBase
+    { 
+        std::tuple<Parsers...> parsers;
+
+    };
 }

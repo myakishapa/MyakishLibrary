@@ -31,9 +31,12 @@
 
 #include <MyakishLibrary/DependencyGraph/Graph.hpp>
 
+#include <MyakishLibrary/BinarySerializationSuite/BinarySerializationSuite.hpp>
+
 namespace st2 = myakish::streams;
 namespace hv = myakish::tree;
 namespace dg = myakish::dependency_graph;
+namespace bst = myakish::binary_serialization_suite;
 
 using namespace myakish::functional::operators;
 using namespace hv::literals;
@@ -255,6 +258,25 @@ int main()
         std::ranges::sort(strs);
 
         std::println();
+    }
+
+    {
+        std::vector<std::byte> data(1024);
+
+        //auto out = st2::ContiguousStream(data.data(), data.data() + data.size());
+        auto out = data | st2::WriteToRange;
+        auto in = data | st2::ReadFromRange;
+
+        out | st2::Write(1337);
+
+        auto rule = bst::Int;
+
+        int val;
+
+        rule.IO(in, val);
+
+        std::println("{}", val);
+
     }
 }
 
