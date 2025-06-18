@@ -17,6 +17,7 @@
 #include <MyakishLibrary/Streams/Common.hpp>
 
 #include <MyakishLibrary/Functional/Pipeline.hpp>
+#include <MyakishLibrary/Functional/Algebraic.hpp>
 
 #include <MyakishLibrary/Utility.hpp>
 
@@ -32,6 +33,7 @@
 #include <MyakishLibrary/DependencyGraph/Graph.hpp>
 
 #include <MyakishLibrary/BinarySerializationSuite/BinarySerializationSuite.hpp>
+
 
 namespace st2 = myakish::streams;
 namespace hv = myakish::tree;
@@ -277,6 +279,22 @@ int main()
 
         std::println("{}", val);
 
+    }
+
+    {
+        using namespace myakish::functional::algebraic;
+
+        std::variant<int, float, long> a = 2l;
+
+        auto zipWith3 = [](auto arg) { return std::tuple(arg, 3); };
+
+        auto intToStr = [](int i) { return "kdfhgko"s; };
+        auto floatToInt = [](float f) { return 3; };
+        auto longToVec = [](long l) { return std::vector<int>{}; };
+
+        auto t = a | Multitransform(intToStr, floatToInt, longToVec) | Transform(zipWith3);
+
+        std::println();
     }
 }
 
