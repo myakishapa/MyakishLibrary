@@ -278,7 +278,16 @@ namespace myakish::binary_serialization_suite
     template<MonomorphicParserConcept... Parsers>
     struct ParserVariant : ParserBase
     { 
+        using Attribute = std::variant<ParserAttribute<Parsers>...>;
+
         std::tuple<Parsers...> parsers;
+
+        template<streams::Stream Stream>
+        void IO(Stream&& stream, Attribute& attribute) const
+        {
+            
+            
+        }
 
     };
 }
