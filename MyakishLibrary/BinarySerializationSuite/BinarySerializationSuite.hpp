@@ -10,6 +10,7 @@
 
 #include <MyakishLibrary/Functional/Pipeline.hpp>
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
+#include <MyakishLibrary/Functional/Algebraic.hpp>
 
 #include <MyakishLibrary/Meta/Concepts.hpp>
 
@@ -285,8 +286,17 @@ namespace myakish::binary_serialization_suite
         template<streams::Stream Stream>
         void IO(Stream&& stream, Attribute& attribute) const
         {
+            using namespace functional::algebraic;
+
+            auto ParseWith = [&](auto& parser)
+                {
+                    return [&](auto& attribute)
+                        {
+                            return parser.IO(stream, attribute);
+                        };
+                };
             
-            
+            attribute | std::apply(Multitransform, parsers | Transform(ParseWith));
         }
 
     };

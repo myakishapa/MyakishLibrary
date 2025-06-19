@@ -5,26 +5,34 @@
 
 namespace myakish::meta2
 {
-    namespace list
+    struct Undefined {};
+
+    template<typename Result>
+    struct ReturnType
     {
-        template<typename...>
-        struct TypeList {};
+        using type = Result;
+    };
 
-        template<template<typename, typename> typename Function, typename List>
-        struct FoldLeftFirst
-        {
+    template<auto Value>
+    struct ReturnValue
+    {
+        inline constexpr auto value = Value;
+    };
 
-        };
+    template<typename...>
+    struct TypeList {};
 
-        template<template<typename, typename> typename Function, template<typename...> typename List, typename First, typename... Rest>
-        struct FoldLeftFirst<Function, List<First, Rest...>>
-        {
-            using type = std::conditional_t<sizeof...(Rest) == 0,
-                First,
-                typename Function<
-                    First,
-                    typename FoldLeftFirst<Function, TypeList<Rest...>>::type
-                        >::type;
-        };
-    }
+    template<typename Arg>
+    struct ExtractArguments : Undefined {};
+
+    template<template<typename...> typename Template, typename ...Args>
+    struct ExtractArguments<Template<Args...>> : ReturnType<TypeList<Args...>> {};
+
+
+    template<template<typename...> typename Template, typename Arg>
+    struct InstanceOf : ReturnValue<false> {};
+
+    template<template<typename...> typename Template, typename ...Args>
+    struct InstanceOf<Template, Template<Args...>> : ReturnValue<true> {};
+
 }

@@ -4,6 +4,8 @@
 
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 
+#include <MyakishLibrary/Meta/Meta2.hpp>
+
 namespace myakish::functional::algebraic
 {
     template<typename To, typename... SrcTypes>
@@ -44,7 +46,6 @@ namespace myakish::functional::algebraic
         {
             return std::tuple<std::invoke_result_t<Functions, Types>...>(functions(std::get<Indices>(tuple))...);
         }
-
     }
 
     struct MultitransformFunctor : ExtensionMethod
