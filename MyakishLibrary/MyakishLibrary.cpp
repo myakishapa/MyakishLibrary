@@ -318,6 +318,27 @@ int main()
         
         using results = meta::QuotedApply<fn, zipped>::type;
     }
+
+    {
+        namespace meta = myakish::meta2;
+        
+        using namespace myakish::functional::algebraic;
+
+        std::variant<int, float, long> var = 2l;
+
+        auto intToStr = [](int i) { return "kdfhgko"s; };
+        auto floatToInt = [](float f) { return 3; };
+        auto longToVec = [](long l) { /*return std::vector<int>{};*/ };
+
+        auto funcTuple = std::tuple(intToStr, floatToInt, longToVec);
+
+        using resultType = detail2::MultitransformReturnType<decltype(var), decltype(intToStr), decltype(floatToInt), decltype(longToVec)>::type;
+        
+
+        auto result = detail2::Multitransform<0>(var, funcTuple);
+
+        std::println();
+    }
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

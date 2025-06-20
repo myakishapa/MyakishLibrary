@@ -5,7 +5,9 @@
 
 namespace myakish::meta2
 {
-    struct Undefined {};
+    struct UndefinedResult {};
+
+    struct Undefined { using type = UndefinedResult; };
 
     template<typename Result>
     struct ReturnType
@@ -30,8 +32,13 @@ namespace myakish::meta2
     template<template<typename...> typename Template, typename ...Args>
     struct ExtractArguments<Template<Args...>> : ReturnType<TypeList<Args...>> {};
 
-    template<typename Arg>
-    using ExtractArgumentsType = ExtractArguments<Arg>::type;
+    
+    template<template<typename...> typename Template>
+    struct Instantiate
+    {
+        template<typename... Args>
+        struct Function : ReturnType<Template<Args...>> {};
+    };
 
 
     template<template<typename...> typename Function, typename NonList>
@@ -41,11 +48,9 @@ namespace myakish::meta2
     struct Invoke<Function, TypeList<Types...>> : Function<Types...> {};
 
     
-    template<template<typename...> typename Function, typename List>
-    using InvokeType = Invoke<Function, List>::type;
-
     template<typename Quoted, typename List>
     struct QuotedInvoke : Invoke<Quoted::template Function, List> {};
+
 
 
     template<template<typename...> typename BaseFunction, typename ...BaseArgs>
@@ -92,9 +97,6 @@ namespace myakish::meta2
     struct RightFold<Func, TypeList<Only>> : ReturnType<Only> {};
 
 
-    template<template<typename, typename> typename Func, typename List>
-    using RightFoldType = RightFold<Func, List>::type;
-
     template<typename Quoted, typename List>
     struct QuotedRightFold : RightFold<Quoted::template Function, List> {};
 
@@ -121,10 +123,6 @@ namespace myakish::meta2
 
     template<typename... Lists> 
     struct Concat : RightFold<detail::BinaryConcat, TypeList<Lists...>> {};
-    
-
-    template<typename... Lists>
-    using ConcatType = Concat<Lists...>::type;
 
 
 
@@ -150,9 +148,6 @@ namespace myakish::meta2
     template<typename... Lists>
     struct Zip : RightFold<detail::BinaryZip, TypeList<Lists...>> {};
 
-    template<typename... Lists>
-    using ZipType = Zip<Lists...>::type;
-
 
 
     template<template<typename> typename Func, typename NonList>
@@ -161,9 +156,6 @@ namespace myakish::meta2
     template<template<typename> typename Func, typename ...Types>
     struct Apply<Func, TypeList<Types...>> : ReturnType<TypeList<typename Func<Types>::type...>> {};
 
-
-    template<template<typename> typename Func, typename List>
-    using ApplyType = Apply<Func, List>::type;
 
     template<typename Quoted, typename List>
     struct QuotedApply : Apply<Quoted::template Function, List> {};

@@ -44,15 +44,34 @@ namespace myakish::functional::algebraic
         template<typename Type>
         concept Variant = meta2::InstanceOfConcept<Type, std::variant>;
 
-        template<Variant VariantType, typename ...Functions>
-        auto Multitransform(VariantType&& variant, std::tuple<Functions...> functions)
+        template<Variant VariantType, typename... Functions>
+        struct MultitransformReturnType
         {
             using TypesList = meta2::ExtractArguments<std::remove_cvref_t<VariantType>>::type;
+            using TypesFunctionsZipped = meta2::Zip<meta2::TypeList<Functions...>, TypesList>::type;
 
-            /*using ReturnType = std::variant<std::invoke_result_t<FirstFunc, FirstType>, std::invoke_result_t<Functions, Types>...>;
+            using ResultMetafunction = meta2::LeftCurry<meta2::QuotedInvoke, meta2::Quote<std::invoke_result>>;
+            using Results = meta2::QuotedApply<ResultMetafunction, TypesFunctionsZipped>::type;
 
-            if (variant.index() == 0) return ReturnType(func(std::get<0>(variant)));
-            else return CastVariant<ReturnType>(Multitransform(CastVariant<std::variant<Types...>>(variant), functions...));*/
+            using type = meta2::QuotedInvoke<meta2::Instantiate<std::variant>, Results>::type;
+        };
+
+
+        template<std::size_t CurrentIndex, Variant VariantType, typename ...Functions> requires (CurrentIndex >= sizeof...(Functions))
+        MultitransformReturnType<VariantType&&, Functions...>::type Multitransform(VariantType&& variant, std::tuple<Functions...> functions)
+        {
+            std::unreachable();
+        }
+
+        template<std::size_t CurrentIndex, Variant VariantType, typename ...Functions> requires (CurrentIndex < sizeof...(Functions))
+        MultitransformReturnType<VariantType&&, Functions...>::type Multitransform(VariantType&& variant, std::tuple<Functions...> functions)
+        {
+            if (variant.index() == CurrentIndex) return  
+                std::invoke(
+                    std::get<CurrentIndex>(std::move(functions)), 
+                    std::get<CurrentIndex>(std::forward<VariantType>(variant)) 
+                           ) ;
+            else return Multitransform<CurrentIndex + 1>(std::forward<VariantType>(variant), std::move(functions));
         }
     }
 
