@@ -60,6 +60,12 @@ namespace myakish::meta2
         struct Function : BaseFunction<BaseArgs..., Args...> {};
     };
 
+    template<template<typename...> typename BaseFunction, typename ...BaseArgs>
+    struct RightCurry
+    {
+        template<typename ...Args>
+        struct Function : BaseFunction<Args..., BaseArgs...> {};
+    };
 
 
     template<template<typename...> typename Template, typename Arg>
@@ -156,8 +162,100 @@ namespace myakish::meta2
     template<template<typename> typename Func, typename ...Types>
     struct Apply<Func, TypeList<Types...>> : ReturnType<TypeList<typename Func<Types>::type...>> {};
 
-
     template<typename Quoted, typename List>
     struct QuotedApply : Apply<Quoted::template Function, List> {};
+
+
+
+    template<template<typename> typename Predicate, typename NonList>
+    struct Filter : Undefined {};
+
+    template<template<typename> typename Func, typename First, typename ...Rest>
+    struct Filter<Func, TypeList<First, Rest...>>
+    {
+    private:
+
+        using begin = std::conditional_t<Func<First>::value, TypeList<First>, TypeList<>>;
+
+    public:
+        
+        using type = Concat<begin, typename Filter<Func, TypeList<Rest...>>::type>::type;
+    };
+
+    template<template<typename> typename Func>
+    struct Filter<Func, TypeList<>>
+    {
+        using type = TypeList<>;
+    };
+
+    template<typename Quoted, typename List>
+    struct QuotedFilter : Filter<Quoted::template Function, List> {};
+
+
+
+    template<template<typename> typename BaseFunction>
+    struct Not
+    {
+        template<typename... Args>
+        struct Function : ReturnValue<!BaseFunction<Args...>::value> {};
+    };
+
+    template<typename Quoted>
+    struct QuotedNot : Not<Quoted::template Function> {};
+
+
+
+    struct QuotedIdentity
+    {
+        template<typename Arg>
+        struct Function : ReturnType<Arg> {};
+    };
+
+
+
+    template<template<typename...> typename First, template<typename...> typename ...Functions>
+    struct Compose
+    {
+        template<typename... Args>
+        struct Function
+        {
+            using type = typename Compose<Functions...>::template Function<typename First<Args...>::type>::type;
+        };
+    };
+
+    template<template<typename...> typename Only>
+    struct Compose<Only>
+    {
+        template<typename... Args>
+        struct Function : Only<Args...> {};
+    };
+
+    template<typename... Quoted>
+    struct QuotedCompose : Compose<Quoted::template Function...> {};
+
+
+
+    template<typename From, typename To>
+    struct CopyConst : std::conditional<std::is_const_v<std::remove_reference_t<From>>, std::add_const_t<To>, To> {};
+
+    template<typename From, typename To>
+    struct CopyLReference : std::conditional<std::is_lvalue_reference_v<From>, std::add_lvalue_reference_t<To>, To> {};
+
+    template<typename From, typename To>
+    struct CopyRReference : std::conditional<std::is_rvalue_reference_v<From>, std::add_rvalue_reference_t<To>, To> {};
+
+    template<typename From, typename To>
+    struct CopyQualifiers
+    {
+    private:
+
+        using Const = LeftCurry<CopyConst, From>;
+        using LRef = LeftCurry<CopyLReference, From>;
+        using RRef = LeftCurry<CopyRReference, From>;
+
+    public:
+
+        using type = QuotedCompose<Const, LRef, RRef>::template Function<To>::type;
+    };
 
 }

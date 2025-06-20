@@ -41,6 +41,7 @@ namespace st2 = myakish::streams;
 namespace hv = myakish::tree;
 namespace dg = myakish::dependency_graph;
 namespace bst = myakish::binary_serialization_suite;
+namespace meta = myakish::meta2;
 
 using namespace myakish::functional::operators;
 using namespace hv::literals;
@@ -66,6 +67,8 @@ struct dg::DefaultCreateTraits<pes>
         return myakish::Any::Create<pes>(first, tree["str"_sk], second);
     }
 };
+
+
 
 int main()
 {
@@ -282,24 +285,8 @@ int main()
 
     }
 
-    {
-        using namespace myakish::functional::algebraic;
-
-        std::variant<int, float, long> a = 2l;
-
-        auto zipWith3 = [](auto arg) { return std::tuple(arg, 3); };
-
-        auto intToStr = [](int i) { return "kdfhgko"s; };
-        auto floatToInt = [](float f) { return 3; };
-        auto longToVec = [](long l) { return std::vector<int>{}; };
-
-        auto t = a | Multitransform(intToStr, floatToInt, longToVec) | Transform(zipWith3);
-
-        std::println();
-    }
 
     {
-        namespace meta = myakish::meta2;
 
         using l1 = meta::TypeList<int, float>;
         using l2 = meta::TypeList<double, char>;
@@ -307,7 +294,8 @@ int main()
 
         using c = meta::Concat<l1, l2, l3>::type;
         using z = meta::Zip<l1, l2>::type;
-
+        
+        using integers = meta::QuotedFilter<meta::Not<std::is_void>, c>::type;
 
         using args = meta::TypeList<int, std::string>;
         using fns = meta::TypeList<float(int), double(std::string)>;
@@ -317,25 +305,33 @@ int main()
         using fn = meta::LeftCurry<meta::QuotedInvoke, invokeResultQ>;
         
         using results = meta::QuotedApply<fn, zipped>::type;
+
+        using constFloat = meta::CopyQualifiers<const int&&, float>::type;
+
+        constexpr auto djkfgd = std::is_const_v<const int&>;
     }
 
-    {
-        namespace meta = myakish::meta2;
-        
+    {        
         using namespace myakish::functional::algebraic;
 
         std::variant<int, float, long> var = 2l;
 
         auto intToStr = [](int i) { return "kdfhgko"s; };
         auto floatToInt = [](float f) { return 3; };
-        auto longToVec = [](long l) { /*return std::vector<int>{};*/ };
+        auto transformLong = [](long& l) { l = 4; return l; };
 
-        auto funcTuple = std::tuple(intToStr, floatToInt, longToVec);
+        auto funcTuple = std::tuple(intToStr, floatToInt, transformLong);
 
-        using resultType = detail2::MultitransformReturnType<decltype(var), decltype(intToStr), decltype(floatToInt), decltype(longToVec)>::type;
+        using resultType = detail2::VariantMultitransformReturnType<decltype(var)&, decltype(intToStr), decltype(floatToInt), decltype(transformLong)>::type;
         
+        using VariantType = decltype(var)&;
 
-        auto result = detail2::Multitransform<0>(var, funcTuple);
+        /*auto h = std::invoke(
+            std::get<2>(std::move(funcTuple)),
+            std::get<2>(std::forward<VariantType>(var))
+        );*/
+
+        auto result = var | Multitransform2(funcTuple);
 
         std::println();
     }
