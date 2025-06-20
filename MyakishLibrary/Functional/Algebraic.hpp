@@ -21,7 +21,7 @@ namespace myakish::functional::algebraic
 
 
     //variant multitransform
-    namespace detail2
+    namespace detail
     {
         template<typename Type>
         concept Variant = meta2::InstanceOfConcept<Type, std::variant>;
@@ -63,7 +63,7 @@ namespace myakish::functional::algebraic
 
 
     //tuple multitransform
-    namespace detail2
+    namespace detail
     {
         template<typename Type>
         concept Tuple = meta2::InstanceOfConcept<Type, std::tuple>;
@@ -75,64 +75,90 @@ namespace myakish::functional::algebraic
         }
     }
 
-    struct MultitransformFunctor2 : ExtensionMethod
+    struct MultitransformFunctor : ExtensionMethod
     {
-        template<detail2::Variant VariantType, typename ...Types, typename ...Functions> requires (std::variant_size_v<std::remove_cvref_t<VariantType>> == sizeof...(Functions))
+        template<detail::Variant VariantType, typename ...Types, typename ...Functions> requires (std::variant_size_v<std::remove_cvref_t<VariantType>> == sizeof...(Functions))
         constexpr auto ExtensionInvoke(VariantType&& variant, std::tuple<Functions...> functions) const
         {
-            return detail2::Multitransform<0>(std::forward<VariantType>(variant), std::move(functions));
+            return detail::Multitransform<0>(std::forward<VariantType>(variant), std::move(functions));
         }
 
-        template<detail2::Variant VariantType, typename ...Types, typename ...Functions> requires (std::variant_size_v<std::remove_cvref_t<VariantType>> == sizeof...(Functions))
+        template<detail::Variant VariantType, typename ...Types, typename ...Functions> requires (std::variant_size_v<std::remove_cvref_t<VariantType>> == sizeof...(Functions))
         constexpr auto ExtensionInvoke(VariantType&& variant, Functions&&... functions) const
         {
             return ExtensionInvoke(std::forward<VariantType>(variant), std::forward_as_tuple(std::forward<Functions>(functions)...));
         }
 
 
-        template<detail2::Tuple TupleType, typename ...Functions> requires (std::tuple_size_v<std::remove_cvref_t<TupleType>> == sizeof...(Functions))
+        template<detail::Tuple TupleType, typename ...Functions> requires (std::tuple_size_v<std::remove_cvref_t<TupleType>> == sizeof...(Functions))
         constexpr auto ExtensionInvoke(TupleType&& tuple, std::tuple<Functions...> functions) const
         {
-            return detail2::Multitransform(std::forward<TupleType>(tuple), std::make_index_sequence<sizeof...(Functions)>{}, std::move(functions));
+            return detail::Multitransform(std::forward<TupleType>(tuple), std::make_index_sequence<sizeof...(Functions)>{}, std::move(functions));
         }
 
-        template<detail2::Tuple TupleType, typename ...Functions> requires (std::tuple_size_v<std::remove_cvref_t<TupleType>> == sizeof...(Functions))
+        template<detail::Tuple TupleType, typename ...Functions> requires (std::tuple_size_v<std::remove_cvref_t<TupleType>> == sizeof...(Functions))
         constexpr auto ExtensionInvoke(TupleType&& tuple, Functions&&... functions) const
         {
             return ExtensionInvoke(std::forward<TupleType>(tuple), std::forward_as_tuple(std::forward<Functions>(functions)...));
         }
     };
-    inline constexpr MultitransformFunctor2 Multitransform2;
+    inline constexpr MultitransformFunctor Multitransform;
 
+
+
+    //variant transform
+    namespace detail
+    {
+        template<Variant VariantType, typename Function>
+        struct VariantTransformReturnType
+        {
+            using TypesList = meta2::ExtractArguments<std::remove_cvref_t<VariantType>>::type;
+
+            using CopyQualifiersFromVariant = meta2::LeftCurry<meta2::CopyQualifiers, VariantType>;
+            using QualifiedTypesList = meta2::QuotedApply<CopyQualifiersFromVariant, TypesList>::type;
+
+            using ResultMetafunction = meta2::LeftCurry<std::invoke_result, Function>;
+            using Results = meta2::QuotedApply<ResultMetafunction, QualifiedTypesList>::type;
+
+            using type = meta2::QuotedInvoke<meta2::Instantiate<std::variant>, Results>::type;
+        };
+
+        template<Variant VariantType, typename Function>
+        auto Transform(VariantType&& variant, Function&& function)
+        {
+            using ReturnType = VariantTransformReturnType<VariantType&&, Function&&>::type;
+
+            auto aux = [&]<typename Arg>(Arg &&arg) -> ReturnType
+                {
+                    return std::invoke(std::forward<Function>(function), std::forward<Arg>(arg));
+                };
+
+            return std::visit(aux, std::forward<VariantType>(variant));
+        }
+    }
 
     //tuple transform
     namespace detail
     {
-        template<typename ...Types, typename Function, std::size_t ...Indices>
-        auto Transform(std::index_sequence<Indices...>, std::tuple<Types...> tuple, Function function)
+        template<detail::Tuple TupleType, typename Function, std::size_t ...Indices>
+        auto Transform(std::index_sequence<Indices...>, TupleType&& tuple, Function&& function)
         {
-            return std::tuple<std::invoke_result_t<Function, Types>...>(function(std::get<Indices>(tuple))...);
+            return std::tuple(std::invoke(std::forward<Function>(function), std::get<Indices>(std::forward<TupleType>(tuple)))...);
         }
     }
 
     struct TransformFunctor : ExtensionMethod
     {
-        template<typename ...Types, typename Function>
-        constexpr auto ExtensionInvoke(std::variant<Types...> variant, Function function) const
+        template<detail::Variant VariantType, typename Function>
+        constexpr auto ExtensionInvoke(VariantType&& variant, Function&& function) const
         {
-            using ReturnType = std::variant<std::invoke_result_t<Function, Types>...>;
-            auto aux = [&](auto arg) -> ReturnType
-                {
-                    return function(arg);
-                };
-
-            return std::visit(aux, variant);
+            return detail::Transform(std::forward<VariantType>(variant), std::forward<Function>(function));
         }
 
-        template<typename ...Types, typename Function>
-        constexpr auto ExtensionInvoke(std::tuple<Types...> tuple, Function function) const
+        template<detail::Tuple TupleType, typename Function>
+        constexpr auto ExtensionInvoke(TupleType&& tuple, Function&& function) const
         {
-            return detail::Transform(std::make_index_sequence<sizeof...(Types)>{}, tuple, function);
+            return detail::Transform(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<TupleType>>>{}, std::forward<TupleType>(tuple), std::forward<Function>(function));
         }
     };
     inline constexpr TransformFunctor Transform;

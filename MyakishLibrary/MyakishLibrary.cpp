@@ -320,18 +320,17 @@ int main()
         auto floatToInt = [](float f) { return 3; };
         auto transformLong = [](long& l) { l = 4; return l; };
 
-        auto funcTuple = std::tuple(intToStr, floatToInt, transformLong);
+        auto zipWith3 = [](auto arg) { return std::tuple(arg, 3); };
 
-        using resultType = detail2::VariantMultitransformReturnType<decltype(var)&, decltype(intToStr), decltype(floatToInt), decltype(transformLong)>::type;
+        using resultType = detail::VariantMultitransformReturnType<decltype(var)&, decltype(intToStr), decltype(floatToInt), decltype(transformLong)>::type;
         
-        using VariantType = decltype(var)&;
-
         /*auto h = std::invoke(
             std::get<2>(std::move(funcTuple)),
             std::get<2>(std::forward<VariantType>(var))
         );*/
 
-        auto result = var | Multitransform2(funcTuple);
+
+        auto result = var | Multitransform(intToStr, floatToInt, transformLong) | Transform(zipWith3);
 
         std::println();
     }
