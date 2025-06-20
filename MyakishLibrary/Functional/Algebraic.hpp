@@ -38,6 +38,24 @@ namespace myakish::functional::algebraic
         }
     }
 
+    //variant multitransform
+    namespace detail2
+    {
+        template<typename Type>
+        concept Variant = meta2::InstanceOfConcept<Type, std::variant>;
+
+        template<Variant VariantType, typename ...Functions>
+        auto Multitransform(VariantType&& variant, std::tuple<Functions...> functions)
+        {
+            using TypesList = meta2::ExtractArguments<std::remove_cvref_t<VariantType>>::type;
+
+            /*using ReturnType = std::variant<std::invoke_result_t<FirstFunc, FirstType>, std::invoke_result_t<Functions, Types>...>;
+
+            if (variant.index() == 0) return ReturnType(func(std::get<0>(variant)));
+            else return CastVariant<ReturnType>(Multitransform(CastVariant<std::variant<Types...>>(variant), functions...));*/
+        }
+    }
+
     //tuple multitransform
     namespace detail
     {

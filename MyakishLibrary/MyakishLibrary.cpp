@@ -13,6 +13,8 @@
 #include <MyakishLibrary/Meta/Pack.hpp>
 #include <MyakishLibrary/Meta/Tag.hpp>
 
+#include <MyakishLibrary/Meta/Meta2.hpp>
+
 #include <MyakishLibrary/Streams/Concepts.hpp>
 #include <MyakishLibrary/Streams/Common.hpp>
 
@@ -64,7 +66,6 @@ struct dg::DefaultCreateTraits<pes>
         return myakish::Any::Create<pes>(first, tree["str"_sk], second);
     }
 };
-
 
 int main()
 {
@@ -295,6 +296,27 @@ int main()
         auto t = a | Multitransform(intToStr, floatToInt, longToVec) | Transform(zipWith3);
 
         std::println();
+    }
+
+    {
+        namespace meta = myakish::meta2;
+
+        using l1 = meta::TypeList<int, float>;
+        using l2 = meta::TypeList<double, char>;
+        using l3 = meta::TypeList<std::string, long>;
+
+        using c = meta::Concat<l1, l2, l3>::type;
+        using z = meta::Zip<l1, l2>::type;
+
+
+        using args = meta::TypeList<int, std::string>;
+        using fns = meta::TypeList<float(int), double(std::string)>;
+        
+        using zipped = meta::Zip<fns, args>::type;
+        using invokeResultQ = meta::Quote<std::invoke_result>;
+        using fn = meta::LeftCurry<meta::QuotedInvoke, invokeResultQ>;
+        
+        using results = meta::QuotedApply<fn, zipped>::type;
     }
 }
 
