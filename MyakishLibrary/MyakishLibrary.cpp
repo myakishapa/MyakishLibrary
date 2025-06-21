@@ -285,7 +285,6 @@ int main()
 
     }
 
-
     {
 
         using l1 = meta::TypeList<int, float>;
@@ -327,9 +326,34 @@ int main()
 
         auto tuple = std::tuple(1, 2.f, "sfd"s);
 
-        auto result2 = tuple | Select(2);
+        auto result2 = std::move(tuple) | Select(2);
+
+        auto synth = Synthesize<std::variant<int, double, std::string>>(2);
 
         std::println();
+    }
+
+    {
+        std::vector<std::byte> data(1024);
+
+        //auto out = st2::ContiguousStream(data.data(), data.data() + data.size());
+        auto out = data | st2::WriteToRange;
+        auto in = data | st2::ReadFromRange;
+        
+        std::variant<int, float> val = 20.f;
+
+        auto rule = bst::VariantParser(bst::Int, bst::Trivial<float>);
+
+        rule.IO(out | st2::WriteOnly, 1, val);
+
+        //out | st2::Write(10.f);
+
+
+
+        rule.IO(in, 1, val);
+
+        std::println();
+
     }
 }
 

@@ -162,6 +162,63 @@ namespace myakish::streams
     };
     inline constexpr Aligner Aligned;
 
+
+    template<OutputStream Underlying>
+    struct WriteOnlyWrapper
+    {
+        Underlying stream;
+
+        WriteOnlyWrapper(Underlying stream) : stream(std::move(stream)) {}
+
+        void Seek(Size size)
+        {
+            stream.Seek(size);
+        }
+
+        bool Valid() const
+        {
+            return stream.Valid();
+        }
+
+        Size Length() const requires SizedStream<Underlying>
+        {
+            return stream.Length();
+        }
+
+        Size Offset() const requires AlignableStream<Underlying>
+        {
+            return stream.Offset();
+        }
+
+        void Write(const std::byte* src, Size size)
+        {
+            stream.Write(src, size);
+        }
+
+        void Reserve(Size reserve) requires ReservableStream<Underlying>
+        {
+            stream.Reserve(reserve);
+        }
+
+        auto Data() const requires PersistentDataStream<Underlying>
+        {
+            return stream.Data();
+        }
+    };
+    static_assert(AlignableStream<WriteOnlyWrapper<ExpositionOnlyStream>>, "WriteOnlyWrapper must be AlignableStream");
+    static_assert(SizedStream<WriteOnlyWrapper<ExpositionOnlyStream>>, "WriteOnlyWrapper must be RandomAccessStream");
+    static_assert(OutputStream<WriteOnlyWrapper<ExpositionOnlyStream>>, "WriteOnlyWrapper must be OutputStream");
+    static_assert(ReservableStream<WriteOnlyWrapper<ExpositionOnlyStream>>, "WriteOnlyWrapper must be ReservableStream");
+
+    struct WriteOnlyFunctor : functional::ExtensionMethod
+    {
+        auto ExtensionInvoke(OutputStream auto stream) const
+        {
+            return WriteOnlyWrapper(std::move(stream));
+        }
+    };
+    inline constexpr WriteOnlyFunctor WriteOnly;
+
     
     struct StandardOutputStream
     {

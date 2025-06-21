@@ -277,26 +277,48 @@ namespace myakish::binary_serialization_suite
 
 
     template<MonomorphicParserConcept... Parsers>
-    struct ParserVariant : ParserBase
+    struct VariantParser : ParserBase
     { 
         using Attribute = std::variant<ParserAttribute<Parsers>...>;
 
         std::tuple<Parsers...> parsers;
 
-        template<streams::Stream Stream>
-        void IO(Stream&& stream, Attribute& attribute) const
+        VariantParser(Parsers... parsers) : parsers(std::move(parsers)...) {}
+
+        template<streams::InputStream Stream, typename ArgAttribute>
+        void IO(Stream&& in, std::size_t index, ArgAttribute& attribute) const
         {
             using namespace functional::algebraic;
+            using namespace functional::operators;
 
             auto ParseWith = [&](auto& parser)
                 {
-                    return [&](auto& attribute)
+                    return [&](auto&& attribute)
                         {
-                            return parser.IO(stream, attribute);
+                            parser.IO(in, attribute);
+                            return attribute;
                         };
                 };
-            
-            attribute | std::apply(Multitransform, parsers | Transform(ParseWith));
+
+            attribute = Synthesize<Attribute>(index) | Multitransform(parsers | Transform(ParseWith)) | Cast<std::remove_reference_t<ArgAttribute>>();
+        }
+
+        template<streams::OutputStream Stream, typename ArgAttribute>
+        void IO(Stream&& out, std::size_t, ArgAttribute&& attribute) const
+        {            
+            using namespace functional::algebraic;
+            using namespace functional::operators;
+
+            auto ParseWith = [&](auto& parser)
+                {
+                    return [&](auto&& attribute)
+                        {
+                            parser.IO(out, attribute);
+                            return attribute;
+                        };
+                };
+
+            std::forward<ArgAttribute>(attribute) | Cast<Attribute>() | std::apply(Multitransform, parsers | Transform(ParseWith));
         }
 
     };

@@ -156,7 +156,7 @@ namespace myakish::functional::algebraic
     //select
     namespace detail
     {
-        template<detail::Tuple TupleType>
+        template<Tuple TupleType>
         struct SelectReturnType
         {
             using TypesList = meta2::ExtractArguments<std::remove_cvref_t<TupleType>>::type;
@@ -164,13 +164,13 @@ namespace myakish::functional::algebraic
             using type = meta2::QuotedInvoke<meta2::Instantiate<std::variant>, TypesList>::type;
         };
 
-        template<std::size_t CurrentIndex, detail::Tuple TupleType> requires (CurrentIndex >= std::tuple_size_v<std::remove_cvref_t<TupleType>>)
+        template<std::size_t CurrentIndex, Tuple TupleType> requires (CurrentIndex >= std::tuple_size_v<std::remove_cvref_t<TupleType>>)
         SelectReturnType<TupleType&&>::type Select(TupleType&& tuple, std::size_t index)
         {
             std::unreachable();
         }
 
-        template<std::size_t CurrentIndex, detail::Tuple TupleType> requires (CurrentIndex < std::tuple_size_v<std::remove_cvref_t<TupleType>>)
+        template<std::size_t CurrentIndex, Tuple TupleType> requires (CurrentIndex < std::tuple_size_v<std::remove_cvref_t<TupleType>>)
         SelectReturnType<TupleType&&>::type Select(TupleType&& tuple, std::size_t index)
         {
             if (index == CurrentIndex) return std::get<CurrentIndex>(std::forward<TupleType>(tuple));
@@ -187,5 +187,52 @@ namespace myakish::functional::algebraic
         }
     };
     inline constexpr SelectFunctor Select;
+
+    template<detail::Variant To>
+    struct CastFunctor : ExtensionMethod
+    {
+        template<detail::Variant From>
+        constexpr auto ExtensionInvoke(From&& from) const
+        {
+            auto cast = []<typename Arg>(Arg && arg) -> To
+            {
+                if constexpr (std::constructible_from<To, Arg&&>) return To(std::forward<Arg>(arg));
+                else std::unreachable();
+            };
+
+            return std::visit(cast, std::forward<From>(from));
+        }
+    };
+    template<detail::Variant To>
+    inline constexpr CastFunctor<To> Cast;
+
+
+    //synthesize
+    namespace detail
+    {
+        template<std::size_t CurrentIndex, Variant VariantType> requires (CurrentIndex >= std::variant_size_v<VariantType>)
+        VariantType Synthesize(std::size_t index)
+        {
+            std::unreachable();
+        }
+
+        template<std::size_t CurrentIndex, Variant VariantType> requires (CurrentIndex < std::variant_size_v<VariantType>)
+        VariantType Synthesize(std::size_t index)
+        {
+            if (index == CurrentIndex) return VariantType(std::in_place_index<CurrentIndex>);
+            else return Synthesize<CurrentIndex + 1, VariantType>(index);
+        }
+    }
+
+    template<detail::Variant VariantType>
+    struct SynthesizeFunctor : ExtensionMethod
+    {
+        constexpr auto ExtensionInvoke(std::size_t runtimeIndex) const
+        {
+            return detail::Synthesize<0, VariantType>(runtimeIndex);
+        }
+    };
+    template<detail::Variant VariantType>
+    inline constexpr SynthesizeFunctor<VariantType> Synthesize;
 
 }
