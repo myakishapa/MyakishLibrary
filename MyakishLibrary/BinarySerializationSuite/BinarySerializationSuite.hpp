@@ -283,7 +283,8 @@ namespace myakish::binary_serialization_suite
 
         std::tuple<Parsers...> parsers;
 
-        VariantParser(Parsers... parsers) : parsers(std::move(parsers)...) {}
+        constexpr VariantParser(Parsers... parsers) : parsers(std::move(parsers)...) {}
+        constexpr VariantParser(std::tuple<Parsers...> parsers) : parsers(std::move(parsers)) {}
 
         template<streams::InputStream Stream, typename ArgAttribute>
         void IO(Stream&& in, std::size_t index, ArgAttribute& attribute) const
@@ -320,6 +321,35 @@ namespace myakish::binary_serialization_suite
 
             std::forward<ArgAttribute>(attribute) | Cast<Attribute>() | std::apply(Multitransform, parsers | Transform(ParseWith));
         }
-
     };
+
+    template<MonomorphicParserConcept... Parsers>
+    VariantParser(std::tuple<Parsers...> parsers) -> VariantParser<Parsers...>;
+
+
+    template<MonomorphicParserConcept First, MonomorphicParserConcept Second>
+    constexpr auto operator|(First f, Second s)
+    {
+        return VariantParser(std::move(f), std::move(s));
+    }
+
+    template<MonomorphicParserConcept... LeftParsers, MonomorphicParserConcept Second>
+    constexpr auto operator|(VariantParser<LeftParsers...> f, Second s)
+    {
+        return VariantParser(std::tuple_cat( std::move(f.parsers), std::tuple(std::move(s)) ));
+    }
+
+    template<MonomorphicParserConcept First, MonomorphicParserConcept... RightParsers>
+    constexpr auto operator|(First f, VariantParser<RightParsers...> s)
+    {
+        return VariantParser(std::tuple_cat(std::tuple(std::move(f)), std::move(s.parsers)));
+    }
+
+    template<MonomorphicParserConcept... LeftParsers, MonomorphicParserConcept... RightParsers>
+    constexpr auto operator|(VariantParser<LeftParsers...> f, VariantParser<RightParsers...> s)
+    {
+        return VariantParser(std::tuple_cat(std::move(f.parsers), std::move(s.parsers)));
+    }
+
+
 }

@@ -342,7 +342,7 @@ int main()
         
         std::variant<int, float> val = 20.f;
 
-        auto rule = bst::VariantParser(bst::Int, bst::Trivial<float>);
+        auto rule = bst::Int | bst::Trivial<float> | bst::Trivial<long double>;
 
         rule.IO(out | st2::WriteOnly, 1, val);
 
