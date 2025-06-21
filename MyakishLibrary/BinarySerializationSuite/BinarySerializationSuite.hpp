@@ -296,7 +296,7 @@ namespace myakish::binary_serialization_suite
                         };
                 };
             
-            //attribute | std::apply(Multitransform, parsers | Transform(ParseWith));
+            attribute | std::apply(Multitransform, parsers | Transform(ParseWith));
         }
 
     };

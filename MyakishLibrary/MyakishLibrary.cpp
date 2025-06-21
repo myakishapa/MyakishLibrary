@@ -314,6 +314,7 @@ int main()
     {        
         using namespace myakish::functional::algebraic;
 
+
         std::variant<int, float, long> var = 2l;
 
         auto intToStr = [](int i) { return "kdfhgko"s; };
@@ -322,15 +323,11 @@ int main()
 
         auto zipWith3 = [](auto arg) { return std::tuple(arg, 3); };
 
-        using resultType = detail::VariantMultitransformReturnType<decltype(var)&, decltype(intToStr), decltype(floatToInt), decltype(transformLong)>::type;
-        
-        /*auto h = std::invoke(
-            std::get<2>(std::move(funcTuple)),
-            std::get<2>(std::forward<VariantType>(var))
-        );*/
-
-
         auto result = var | Multitransform(intToStr, floatToInt, transformLong) | Transform(zipWith3);
+
+        auto tuple = std::tuple(1, 2.f, "sfd"s);
+
+        auto result2 = tuple | Select(2);
 
         std::println();
     }

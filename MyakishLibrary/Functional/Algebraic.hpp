@@ -8,17 +8,6 @@
 
 namespace myakish::functional::algebraic
 {
-    template<typename To, typename... SrcTypes>
-    To CastVariant(std::variant<SrcTypes...> variant)
-    {
-        auto transform = []<typename Arg>(Arg arg) -> To 
-        { 
-            if constexpr (std::convertible_to<Arg, To>) return To(arg);
-            else std::unreachable();
-        };
-        return std::visit(transform, variant);
-    }
-
 
     //variant multitransform
     namespace detail
@@ -162,4 +151,41 @@ namespace myakish::functional::algebraic
         }
     };
     inline constexpr TransformFunctor Transform;
+
+
+    //select
+    namespace detail
+    {
+        template<detail::Tuple TupleType>
+        struct SelectReturnType
+        {
+            using TypesList = meta2::ExtractArguments<std::remove_cvref_t<TupleType>>::type;
+
+            using type = meta2::QuotedInvoke<meta2::Instantiate<std::variant>, TypesList>::type;
+        };
+
+        template<std::size_t CurrentIndex, detail::Tuple TupleType> requires (CurrentIndex >= std::tuple_size_v<std::remove_cvref_t<TupleType>>)
+        SelectReturnType<TupleType&&>::type Select(TupleType&& tuple, std::size_t index)
+        {
+            std::unreachable();
+        }
+
+        template<std::size_t CurrentIndex, detail::Tuple TupleType> requires (CurrentIndex < std::tuple_size_v<std::remove_cvref_t<TupleType>>)
+        SelectReturnType<TupleType&&>::type Select(TupleType&& tuple, std::size_t index)
+        {
+            if (index == CurrentIndex) return std::get<CurrentIndex>(std::forward<TupleType>(tuple));
+            else return Select<CurrentIndex + 1>(std::forward<TupleType>(tuple), index);
+        }
+    }
+
+    struct SelectFunctor : ExtensionMethod
+    {
+        template<detail::Tuple TupleType>
+        constexpr auto ExtensionInvoke(TupleType&& tuple, std::size_t runtimeIndex) const
+        {
+            return detail::Select<0>(std::forward<TupleType>(tuple), runtimeIndex);
+        }
+    };
+    inline constexpr SelectFunctor Select;
+
 }
