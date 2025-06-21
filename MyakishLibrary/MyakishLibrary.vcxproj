@@ -145,6 +145,7 @@
     <ClInclude Include="Enum\Dynamic.hpp" />
     <ClInclude Include="Enum\BitwiseOperators.hpp" />
     <ClInclude Include="Functional\ExtensionMethod.hpp" />
+    <ClInclude Include="Functional\HigherOrder.hpp" />
     <ClInclude Include="Functional\Pipeline.hpp" />
     <ClInclude Include="Functional\Algebraic.hpp" />
     <ClInclude Include="HvTree\Array\Array.hpp" />

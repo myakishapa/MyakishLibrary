@@ -152,5 +152,8 @@
     <ClInclude Include="Functional\Algebraic.hpp">
       <Filter>Header Files\Functional</Filter>
     </ClInclude>
+    <ClInclude Include="Functional\HigherOrder.hpp">
+      <Filter>Header Files\Functional</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
