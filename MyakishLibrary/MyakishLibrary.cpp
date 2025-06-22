@@ -20,6 +20,7 @@
 
 #include <MyakishLibrary/Functional/Pipeline.hpp>
 #include <MyakishLibrary/Functional/Algebraic.hpp>
+#include <MyakishLibrary/Functional/HigherOrder.hpp>
 
 #include <MyakishLibrary/Utility.hpp>
 
@@ -42,6 +43,7 @@ namespace hv = myakish::tree;
 namespace dg = myakish::dependency_graph;
 namespace bst = myakish::binary_serialization_suite;
 namespace meta = myakish::meta2;
+namespace hof = myakish::functional::higher_order;
 
 using namespace myakish::functional::operators;
 using namespace hv::literals;
@@ -342,15 +344,16 @@ int main()
         
         std::variant<int, float> val = 20.f;
 
-        auto rule = bst::Int | bst::Trivial<float> | bst::Trivial<long double>;
-
-        rule.IO(out | st2::WriteOnly, 1, val);
+        auto var = bst::Int | bst::Trivial<float> | bst::Trivial<long double>;
+        auto rule = bst::Engage(hof::Constant(1), std::identity{}) >> var;
+        
+        rule.IO(out | st2::WriteOnly, val);
 
         //out | st2::Write(10.f);
 
 
 
-        rule.IO(in, 1, val);
+        rule.IO(in, val);
 
         std::println();
 

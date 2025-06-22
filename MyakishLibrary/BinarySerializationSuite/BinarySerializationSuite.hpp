@@ -275,6 +275,24 @@ namespace myakish::binary_serialization_suite
     template<MonomorphicParserConcept Parser>
     using ParserAttribute = Parser::Attribute;
 
+    struct EngageParser : ParserBase
+    {
+        template<streams::InputStream Stream, typename Variant>
+        void IO(Stream&&, std::size_t index, Variant&& variant) const
+        {
+            using namespace functional::algebraic;
+            using namespace functional::operators;
+            
+            variant = Synthesize<std::remove_cvref_t<Variant>>(index);
+        }
+
+        template<streams::OutputStream Stream, typename Variant>
+        void IO(Stream&&, std::size_t index, Variant&& variant) const
+        {
+            //no-op - variant should be already engaged
+        }
+    };
+    inline constexpr EngageParser Engage;
 
     template<MonomorphicParserConcept... Parsers>
     struct VariantParser : ParserBase
@@ -285,7 +303,7 @@ namespace myakish::binary_serialization_suite
 
         constexpr VariantParser(Parsers... parsers) : parsers(std::move(parsers)...) {}
         constexpr VariantParser(std::tuple<Parsers...> parsers) : parsers(std::move(parsers)) {}
-
+        /*
         template<streams::InputStream Stream, typename ArgAttribute>
         void IO(Stream&& in, std::size_t index, ArgAttribute& attribute) const
         {
@@ -320,6 +338,24 @@ namespace myakish::binary_serialization_suite
                 };
 
             std::forward<ArgAttribute>(attribute) | Cast<Attribute>() | std::apply(Multitransform, parsers | Transform(ParseWith));
+        }
+        */
+        template<streams::Stream Stream, typename ArgAttribute>
+        void IO(Stream&& out, ArgAttribute&& attribute) const
+        {
+            using namespace functional::algebraic;
+            using namespace functional::operators;
+
+            auto ParseWith = [&](auto& parser)
+                {
+                    return [&](auto&& attribute)
+                        {
+                            parser.IO(out, attribute);
+                            return attribute;
+                        };
+                };
+
+            attribute = std::forward<ArgAttribute>(attribute) | Cast<Attribute>() | std::apply(Multitransform, parsers | Transform(ParseWith)) | Cast<std::remove_cvref_t<ArgAttribute>>();
         }
     };
 

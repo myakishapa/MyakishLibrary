@@ -13,11 +13,20 @@ namespace myakish::functional::higher_order
     }
 
     template<typename First, typename ...Rest>
-    auto Compose(First&& first, Rest&&... rest)
+    auto Compose(First first, Rest... rest)
     {
-        return [&]<typename ...Args>(Args&&... args) -> decltype(auto)
+        return [=]<typename ...Args>(Args&&... args) -> decltype(auto)
         {
-            return Compose(std::forward<Rest>(rest)...)(std::invoke(std::forward<First>(first), std::forward<Args>(args)...));
+            return Compose(std::move(rest)...)(std::invoke(first, std::forward<Args>(args)...));
         };
+    }
+
+    template<typename Type>
+    auto Constant(Type value)
+    {
+        return [=](auto&& _)
+            {
+                return value;
+            };
     }
 }

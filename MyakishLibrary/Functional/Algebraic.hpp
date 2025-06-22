@@ -202,6 +202,12 @@ namespace myakish::functional::algebraic
 
             return std::visit(cast, std::forward<From>(from));
         }
+
+        template<detail::Variant From> requires std::same_as<std::remove_cvref_t<From>, To>
+        constexpr To ExtensionInvoke(From&& from) const
+        {
+            return std::forward<From>(from);
+        }
     };
     template<detail::Variant To>
     inline constexpr CastFunctor<To> Cast;
