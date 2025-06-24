@@ -4,29 +4,45 @@
 #include <ranges>
 
 #include <MyakishLibrary/Functional/Pipeline.hpp>
+#include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 
 namespace myakish::functional::higher_order
 {
-    auto Compose()
+    struct ConstantFunctor : ExtensionMethod, DisallowDirectInvoke, RightCurry
+    {
+        template<typename Type>
+        constexpr Type ExtensionInvoke(Type value, auto&&... _) const
+        {
+            return value;
+        }
+    };
+    inline constexpr ConstantFunctor Constant;
+
+    auto DecayCompose()
     {
         return std::identity{};
     }
 
     template<typename First, typename ...Rest>
-    auto Compose(First first, Rest... rest)
+    auto DecayCompose(First first, Rest... rest)
     {
-        return [=]<typename ...Args>(Args&&... args) -> decltype(auto)
+        return [...rest = std::move(rest), first = std::move(first)]<typename ...Args>(Args&&... args) -> auto
         {
-            return Compose(std::move(rest)...)(std::invoke(first, std::forward<Args>(args)...));
+            return DecayCompose(std::move(rest)...)(std::invoke(first, std::forward<Args>(args)...));
         };
     }
 
-    template<typename Type>
-    auto Constant(Type value)
+    struct DecayThenFunctor : ExtensionMethod, DisallowDirectInvoke
     {
-        return [=](auto&& _)
-            {
-                return value;
-            };
-    }
+        template<typename ...Functions>
+        constexpr auto ExtensionInvoke(Functions... functions) const
+        {
+            return DecayCompose(std::move(functions)...);
+        }
+    };
+    inline constexpr DecayThenFunctor DecayThen;
+
+
+
+
 }

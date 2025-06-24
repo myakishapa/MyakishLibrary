@@ -6,39 +6,70 @@
 
 namespace myakish::functional
 {
-    template<typename Type, typename ...Args>
-    concept ExtensionInvocable = requires(Type&& object, Args&&... args)
+    struct DisallowDirectInvoke {};
+    struct RightCurry {};
+
+    namespace detail
     {
-        std::forward<Type>(object).ExtensionInvoke(std::forward<Args>(args)...);
-    };
+        template<typename Type>
+        concept RightCurried = std::derived_from<std::remove_cvref_t<Type>, RightCurry>;
+
+        template<typename Callable, typename ...Args>
+        concept ExtensionInvocable = requires(Callable && object, Args&&... args)
+        {
+            std::forward<Callable>(object).ExtensionInvoke(std::forward<Args>(args)...);
+        };
+
+        template<typename Callable, typename ...Args>
+        concept DirectExtensionInvocable = !std::derived_from<std::remove_cvref_t<Callable>, DisallowDirectInvoke> && ExtensionInvocable<Callable, Args...>;
+
+    }
+
 
     struct ExtensionMethod
     {
-        template<typename Callable, typename ...Args>
+        template<typename Callable, typename ...CurryArgs>
         struct ExtensionClosure
         {
             Callable&& baseCallable;
-            std::tuple<Args&&...> argsTuple;
+            std::tuple<CurryArgs&&...> curryArgs;
 
-            ExtensionClosure(Callable&& baseCallable, Args&&... args) : baseCallable(std::forward<Callable>(baseCallable)), argsTuple(std::forward<Args>(args)...) {}
+            ExtensionClosure(Callable&& baseCallable, CurryArgs&&... curryArgs) : baseCallable(std::forward<Callable>(baseCallable)), curryArgs(std::forward<CurryArgs>(curryArgs)...) {}
 
-            template<typename Extended, std::size_t ...Indices>
-            decltype(auto) Invoke(Extended&& obj, std::index_sequence<Indices...>) const
+
+            template<typename ...Args>
+            decltype(auto) operator()(Args&&... args) const
             {
-                return std::forward<Callable>(baseCallable).ExtensionInvoke(std::forward<Extended>(obj), std::forward<Args>(std::get<Indices>(argsTuple))...);
+                return Dispatch(std::make_index_sequence<sizeof...(CurryArgs)>{}, std::forward<Args>(args)...);
             }
 
-            template<typename Extended>
-            decltype(auto) operator()(Extended&& obj) const
+        private:
+
+
+            template<typename ...Args, std::size_t ...Indices>
+            decltype(auto) Dispatch(std::index_sequence<Indices...> seq, Args&&... args) const
             {
-                return Invoke(std::forward<Extended>(obj), std::make_index_sequence<sizeof...(Args)>{});
+                if constexpr (detail::RightCurried<Callable>) return RightInvoke(seq, std::forward<Args>(args)...);
+                else return                                           LeftInvoke(seq, std::forward<Args>(args)...);
+            }
+
+            template<typename ...Args, std::size_t ...Indices> requires detail::ExtensionInvocable<Callable, Args..., CurryArgs...>
+            decltype(auto) LeftInvoke(std::index_sequence<Indices...>, Args&&... args) const
+            {
+                return std::forward<Callable>(baseCallable).ExtensionInvoke(std::forward<Args>(args)..., std::forward<CurryArgs>(std::get<Indices>(curryArgs))...);
+            }
+
+            template<typename ...Args, std::size_t ...Indices> requires detail::ExtensionInvocable<Callable, CurryArgs..., Args...>
+            decltype(auto) RightInvoke(std::index_sequence<Indices...>, Args&&... args) const
+            {
+                return std::forward<Callable>(baseCallable).ExtensionInvoke(std::forward<CurryArgs>(std::get<Indices>(curryArgs))..., std::forward<Args>(args)...);
             }
         };
 
-        template<typename Self, typename ...Args> requires (!meta::InstanceOf<ExtensionClosure>::Func<Self>::value)
+        template<typename Self, typename ...Args>
         auto operator()(this Self&& self, Args&&... args)
         {
-            if constexpr (ExtensionInvocable<Self&&, Args&&...>) return self.ExtensionInvoke(std::forward<Args&&>(args)...);
+            if constexpr (detail::DirectExtensionInvocable<Self, Args...>) return std::forward<Self>(self).ExtensionInvoke(std::forward<Args&&>(args)...);
             else return ExtensionClosure<Self, Args...>(std::forward<Self>(self), std::forward<Args>(args)...);
         }
     };

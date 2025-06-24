@@ -74,6 +74,7 @@ struct dg::DefaultCreateTraits<pes>
 
 int main()
 {
+
     {
         std::vector<std::byte> data(1024);
  
@@ -118,6 +119,8 @@ int main()
         auto in = std::views::iota(0) | st2::ReadFromRange;  
         auto out = st2::FileOutputStream("test.bin");
         
+        auto test = st2::Copy(out, 32);
+
         in | st2::Copy(out, 32);
     }
 
@@ -347,9 +350,11 @@ int main()
         auto var = bst::Int | bst::Trivial<float> | bst::Trivial<long double>;
         auto rule = bst::Engage(hof::Constant(1), std::identity{}) >> var;
         
-        rule.IO(out | st2::WriteOnly, val);
+        auto test = std::invoke(hof::Constant(1), var);
 
-        //out | st2::Write(10.f);
+        //rule.IO(out | st2::WriteOnly, val);
+
+        out | st2::Write(10.f);
 
 
 
@@ -363,7 +368,7 @@ int main()
         auto func1 = [](int i) -> float { return i * 2.f; };
         auto func2 = [](float f) -> double { return f * 2.0; };
 
-        auto comp = hof::Compose(func1, std::identity{}, func2);
+        auto comp = func1 | hof::DecayThen(std::identity{}) | hof::DecayThen(func2);
 
         auto val = comp(2);
 

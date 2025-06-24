@@ -193,11 +193,11 @@ namespace myakish::binary_serialization_suite
 
         constexpr SequenceParser(First f, Second s) : f(std::move(f)), s(std::move(s)) {}
 
-        template<streams::Stream Stream, typename Attribute>
-        void IO(Stream&& stream, Attribute&& attribute) const
+        template<streams::Stream Stream, typename ...Attributes>
+        void IO(Stream&& stream, Attributes&&... attributes) const
         {
-            f.IO(stream, attribute);
-            s.IO(stream, attribute);
+            f.IO(stream, attributes...);
+            s.IO(stream, attributes...);
         }
     };
 
