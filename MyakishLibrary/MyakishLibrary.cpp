@@ -358,6 +358,40 @@ int main()
         std::println();
 
     }
+
+    {
+        auto func1 = [](int i) -> float { return i * 2.f; };
+        auto func2 = [](float f) -> double { return f * 2.0; };
+
+        auto comp = hof::Compose(func1, std::identity{}, func2);
+
+        auto val = comp(2);
+
+        std::println();
+    }
+
+    {
+        std::vector<std::byte> data(1024);
+
+        //auto out = st2::ContiguousStream(data.data(), data.data() + data.size());
+        auto out = data | st2::WriteToRange;
+        auto in = data | st2::ReadFromRange;
+
+        std::vector<int> srcVec = { 1, 2, 3, 4, 5 };
+
+        auto rule = bst::FillRange(std::ranges::size, std::identity{}) >> bst::RepeatParser(bst::Int)(std::ranges::size, std::identity{});
+
+        rule.IO(out | st2::WriteOnly, srcVec);
+
+        //out | st2::Write(10.f);
+
+        //srcVec.clear();
+
+        rule.IO(in, srcVec);
+
+        std::println();
+
+    }
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

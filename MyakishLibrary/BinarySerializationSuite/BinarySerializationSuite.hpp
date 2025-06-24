@@ -290,7 +290,7 @@ namespace myakish::binary_serialization_suite
         void IO(Stream&&, std::size_t index, Variant&& variant) const
         {
             //no-op - variant should be already engaged
-        }
+        } 
     };
     inline constexpr EngageParser Engage;
 
@@ -303,43 +303,7 @@ namespace myakish::binary_serialization_suite
 
         constexpr VariantParser(Parsers... parsers) : parsers(std::move(parsers)...) {}
         constexpr VariantParser(std::tuple<Parsers...> parsers) : parsers(std::move(parsers)) {}
-        /*
-        template<streams::InputStream Stream, typename ArgAttribute>
-        void IO(Stream&& in, std::size_t index, ArgAttribute& attribute) const
-        {
-            using namespace functional::algebraic;
-            using namespace functional::operators;
 
-            auto ParseWith = [&](auto& parser)
-                {
-                    return [&](auto&& attribute)
-                        {
-                            parser.IO(in, attribute);
-                            return attribute;
-                        };
-                };
-
-            attribute = Synthesize<Attribute>(index) | Multitransform(parsers | Transform(ParseWith)) | Cast<std::remove_reference_t<ArgAttribute>>();
-        }
-
-        template<streams::OutputStream Stream, typename ArgAttribute>
-        void IO(Stream&& out, std::size_t, ArgAttribute&& attribute) const
-        {            
-            using namespace functional::algebraic;
-            using namespace functional::operators;
-
-            auto ParseWith = [&](auto& parser)
-                {
-                    return [&](auto&& attribute)
-                        {
-                            parser.IO(out, attribute);
-                            return attribute;
-                        };
-                };
-
-            std::forward<ArgAttribute>(attribute) | Cast<Attribute>() | std::apply(Multitransform, parsers | Transform(ParseWith));
-        }
-        */
         template<streams::Stream Stream, typename ArgAttribute>
         void IO(Stream&& out, ArgAttribute&& attribute) const
         {
@@ -387,5 +351,44 @@ namespace myakish::binary_serialization_suite
         return VariantParser(std::tuple_cat(std::move(f.parsers), std::move(s.parsers)));
     }
 
+    struct FillRangeParser : ParserBase
+    {
+        template<streams::InputStream Stream, std::ranges::range AttributeRange>
+        void IO(Stream&&, myakish::Size count, AttributeRange& attribute) const
+        {
+            std::ranges::range_value_t<std::remove_cvref_t<AttributeRange>> defaultValue{};
+            attribute = std::views::repeat(defaultValue, count) | std::ranges::to<std::remove_cvref_t<AttributeRange>>();
+        }
+
+        template<streams::OutputStream Stream, std::ranges::range AttributeRange>
+        void IO(Stream&&, myakish::Size, AttributeRange&& attribute) const
+        {
+            //no-op - range exists
+        }
+    };
+    inline constexpr FillRangeParser FillRange;
+
+
+    template<ParserConcept Parser>
+    struct RepeatParser : ParserBase
+    {
+        Parser parser;
+
+        constexpr RepeatParser(Parser parser) : parser(std::move(parser)) {}
+
+
+        template<streams::Stream Stream, std::ranges::range AttributeRange>
+        void IO(Stream&& stream, myakish::Size count, AttributeRange&& attribute) const
+        {
+            using namespace myakish::literals;
+
+            auto Parse = [&](auto&& attribute)
+                {
+                    parser.IO(stream, attribute);
+                };
+
+            std::ranges::for_each(attribute, Parse);
+        }
+    };
 
 }
