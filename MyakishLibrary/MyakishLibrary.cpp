@@ -400,6 +400,15 @@ int main()
         std::optional<int> a;
     }
 
+    {
+        constexpr auto sum = [](int f, int s)
+            {
+                return f + s;
+            };
+
+        constexpr auto test = myakish::RightFold(sum, 1);
+        constexpr auto test = myakish::RightFold(sum, 1, 2, 3);
+    }
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

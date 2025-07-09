@@ -198,4 +198,17 @@ namespace myakish
             return std::filesystem::recursive_directory_iterator();
         }
     };
+
+
+    template<typename Only>
+    constexpr Only&& RightFold(auto&&, Only&& only)
+    {
+        return std::forward<Only>(only);
+    }
+    
+    template<typename First, typename... Rest, typename Invocable>
+    constexpr decltype(auto) RightFold(Invocable&& invocable, First&& first, Rest&&... rest)
+    {
+        return std::invoke(std::forward<Invocable>(invocable), first, RightFold(std::forward<Invocable>(invocable), std::forward<Rest>(rest)...));
+    }
 }
