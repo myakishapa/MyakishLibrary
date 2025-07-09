@@ -296,6 +296,8 @@ int main()
         using l2 = meta::TypeList<double, char>;
         using l3 = meta::TypeList<std::string, long>;
 
+        using test = meta::At<1, l3>::type;
+
         using c = meta::Concat<l1, l2, l3>::type;
         using z = meta::Zip<l1, l2>::type;
         
@@ -384,7 +386,7 @@ int main()
 
         std::vector<int> srcVec = { 1, 2, 3, 4, 5 };
 
-        auto rule = bst::FillRange(std::ranges::size, std::identity{}) >> bst::RepeatParser(bst::Int)(std::ranges::size, std::identity{});
+        auto rule = bst::FillRange(std::ranges::size, std::identity{}) >> bst::RepeatParser(bst::Int);
 
         rule.IO(out | st2::WriteOnly, srcVec);
 
@@ -395,8 +397,9 @@ int main()
         rule.IO(in, srcVec);
 
         std::println();
-
+        std::optional<int> a;
     }
+
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

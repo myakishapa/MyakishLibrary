@@ -3,6 +3,8 @@
 #include <type_traits>
 #include <utility>
 
+#include <MyakishLibrary/Core.hpp>
+
 namespace myakish::meta2
 {
     struct UndefinedResult {};
@@ -24,6 +26,15 @@ namespace myakish::meta2
     template<typename...>
     struct TypeList {};
 
+
+    template<Size Index, typename NonList>
+    struct At : Undefined {};
+
+    template<Size Index, typename First, typename ...Rest>
+    struct At<Index, TypeList<First, Rest...>> : At<Index - 1, TypeList<Rest...>> {};
+
+    template<typename First, typename ...Rest>
+    struct At<Size(0), TypeList<First, Rest...>> : ReturnType<First> {};
 
 
     template<typename Arg>

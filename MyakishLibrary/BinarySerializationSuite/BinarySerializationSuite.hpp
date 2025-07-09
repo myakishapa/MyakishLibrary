@@ -378,7 +378,7 @@ namespace myakish::binary_serialization_suite
 
 
         template<streams::Stream Stream, std::ranges::range AttributeRange>
-        void IO(Stream&& stream, myakish::Size count, AttributeRange&& attribute) const
+        void IO(Stream&& stream, AttributeRange&& attribute) const
         {
             using namespace myakish::literals;
 
