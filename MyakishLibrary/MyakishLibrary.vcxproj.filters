@@ -65,18 +65,6 @@
     <ClInclude Include="Any.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Meta\Pack.hpp">
-      <Filter>Header Files\Meta</Filter>
-    </ClInclude>
-    <ClInclude Include="Meta\Functions.hpp">
-      <Filter>Header Files\Meta</Filter>
-    </ClInclude>
-    <ClInclude Include="Meta\Concepts.hpp">
-      <Filter>Header Files\Meta</Filter>
-    </ClInclude>
-    <ClInclude Include="Meta\Tag.hpp">
-      <Filter>Header Files\Meta</Filter>
-    </ClInclude>
     <ClInclude Include="Streams\Concepts.hpp">
       <Filter>Header Files\Streams</Filter>
     </ClInclude>
