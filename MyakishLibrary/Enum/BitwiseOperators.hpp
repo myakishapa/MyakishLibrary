@@ -1,7 +1,7 @@
 #pragma once
 #include <utility>
 
-#include <MyakishLibrary/Meta/Meta2.hpp>
+#include <MyakishLibrary/Meta.hpp>
 
 namespace myakish::enums::operators
 {
