@@ -211,4 +211,16 @@ namespace myakish
     {
         return std::invoke(std::forward<Invocable>(invocable), first, RightFold(std::forward<Invocable>(invocable), std::forward<Rest>(rest)...));
     }
+
+    template<std::integral Type>
+    constexpr auto Unsign(Type num)
+    {
+        return static_cast<std::make_unsigned_t<Type>>(num);
+    }
+
+    template<std::integral Type>
+    constexpr Type Padding(Type value, Type alignment)
+    {
+        return (alignment - (value % alignment)) % alignment;
+    }
 }

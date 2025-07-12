@@ -360,7 +360,7 @@ namespace myakish::streams
     {
         constexpr void ExtensionInvoke(AlignableStream auto&& stream, Size alignment) const
         {
-            stream.Seek((alignment - (stream.Offset() % alignment)) % alignment);
+            stream.Seek(Padding(stream.Offset(), alignment));
         }
     };
     inline constexpr AlignFunctor Align;

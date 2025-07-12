@@ -294,9 +294,9 @@ int main()
 
         using l1 = meta::TypeList<int, float>;
         using l2 = meta::TypeList<double, char>;
-        using l3 = meta::TypeList<std::string, long>;
+        using l3 = meta::TypeList<std::string, float, long>;
 
-        using test = meta::At<1, l3>::type;
+        using test = meta::First<std::is_integral, l3>::type;
 
         using c = meta::Concat<l1, l2, l3>::type;
         using z = meta::Zip<l1, l2>::type;
@@ -406,8 +406,10 @@ int main()
                 return f + s;
             };
 
+        std::ranges::begin;
+
         constexpr auto test = myakish::RightFold(sum, 1);
-        constexpr auto test = myakish::RightFold(sum, 1, 2, 3);
+        constexpr auto test3 = myakish::RightFold(sum, 1, 2, 3);
     }
 }
 

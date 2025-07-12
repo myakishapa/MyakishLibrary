@@ -67,9 +67,9 @@ namespace myakish::functional
         };
 
         template<typename Self, typename ...Args>
-        auto operator()(this Self&& self, Args&&... args)
+        decltype(auto) operator()(this Self&& self, Args&&... args)
         {
-            if constexpr (detail::DirectExtensionInvocable<Self, Args...>) return std::forward<Self>(self).ExtensionInvoke(std::forward<Args&&>(args)...);
+            if constexpr (detail::DirectExtensionInvocable<Self, Args...>) return std::forward<Self>(self).ExtensionInvoke(std::forward<Args>(args)...);
             else return ExtensionClosure<Self, Args...>(std::forward<Self>(self), std::forward<Args>(args)...);
         }
     };

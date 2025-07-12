@@ -27,6 +27,13 @@ namespace myakish::meta2
     struct TypeList {};
 
 
+    template<typename NonList>
+    struct Length : Undefined {};
+
+    template<typename ...Args>
+    struct Length<TypeList<Args...>> : ReturnValue<Size(sizeof...(Args))> {};
+
+
     template<Size Index, typename NonList>
     struct At : Undefined {};
 
@@ -35,6 +42,28 @@ namespace myakish::meta2
 
     template<typename First, typename ...Rest>
     struct At<Size(0), TypeList<First, Rest...>> : ReturnType<First> {};
+
+
+    namespace detail
+    {
+        template<template<typename> typename Predicate, Size Index, typename NonList>
+        struct First : Undefined, ReturnValue<Size(-1)> {};
+
+        template<template<typename> typename Predicate, Size Index, typename Begin, typename ...Rest>
+        struct First<Predicate, Index, TypeList<Begin, Rest...>>
+        {
+            inline constexpr static Size value = Predicate<Begin>::value ? Index : First<Predicate, Index + 1, TypeList<Rest...>>::value;
+            using type = std::conditional_t<Predicate<Begin>::value, Begin, typename First<Predicate, Index + 1, TypeList<Rest...>>::type>;
+        };
+    }
+
+    template<template<typename> typename Predicate, typename Arg>
+    struct First : detail::First<Predicate, 0, Arg> {};
+
+    template<typename Quoted, typename Arg>
+    struct QuotedFirst : First<Quoted::template Function, Arg> {};
+
+
 
 
     template<typename Arg>
@@ -89,6 +118,8 @@ namespace myakish::meta2
     template<typename Type, template<typename...> typename Template>
     concept InstanceOfConcept = InstanceOf<Template, std::remove_cvref_t<Type>>::value;
 
+    template<typename Type>
+    concept TypeListConcept = InstanceOfConcept<Type, TypeList>;
 
     
     template<template<typename...> typename Underlying>
@@ -141,6 +172,13 @@ namespace myakish::meta2
     template<typename... Lists> 
     struct Concat : RightFold<detail::BinaryConcat, TypeList<Lists...>> {};
 
+
+
+    template<Size Count, typename Type>
+    struct Repeat : Concat<TypeList<Type>, typename Repeat<Count - 1, Type>::type> {};
+
+    template<typename Type>
+    struct Repeat<Size(0), Type> : ReturnType<TypeList<>> {};
 
 
     namespace detail
