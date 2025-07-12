@@ -4,8 +4,7 @@
 #include <fstream>
 #include <ranges>
 
-#include <MyakishLibrary/Meta/Concepts.hpp>
-#include <MyakishLibrary/Meta/Functions.hpp>
+#include <MyakishLibrary/Meta/Meta2.hpp>
 #include <MyakishLibrary/Streams/Concepts.hpp>
 
 #include <MyakishLibrary/Utility.hpp>
@@ -41,7 +40,7 @@ namespace myakish::streams
     template<bool Const>
     struct ContiguousStream
     {
-        using DataType = meta::ConstIfT<std::byte, Const>;
+        using DataType = std::conditional_t<Const, const std::byte, std::byte>;
 
         DataType* data;
         const std::byte* const sentinel;
@@ -315,7 +314,7 @@ namespace myakish::streams
 
     struct WriteFunctor : functional::ExtensionMethod
     {
-        constexpr void ExtensionInvoke(OutputStream auto&& out, myakish::meta::TriviallyCopyable auto value) const
+        constexpr void ExtensionInvoke(OutputStream auto&& out, myakish::meta2::TriviallyCopyableConcept auto value) const
         {
             out.Write(reinterpret_cast<const std::byte*>(&value), sizeof(value));
         }
@@ -327,7 +326,7 @@ namespace myakish::streams
     };
     inline constexpr WriteFunctor Write;
 
-    template<myakish::meta::TriviallyCopyable Type>
+    template<myakish::meta2::TriviallyCopyableConcept Type>
     struct WriteAsFunctor : functional::ExtensionMethod
     {
         constexpr void ExtensionInvoke(OutputStream auto&& out, Type value) const
@@ -340,10 +339,10 @@ namespace myakish::streams
             out.Write(reinterpret_cast<const std::byte*>(str.data()), str.size());
         }
     };
-    template<myakish::meta::TriviallyCopyable Type>
+    template<myakish::meta2::TriviallyCopyableConcept Type>
     inline constexpr WriteAsFunctor<Type> WriteAs;
 
-    template<myakish::meta::TriviallyCopyable Type>
+    template<myakish::meta2::TriviallyCopyableConcept Type>
     struct ReadFunctor : functional::ExtensionMethod
     {
         constexpr Type ExtensionInvoke(InputStream auto&& in) const
@@ -353,7 +352,7 @@ namespace myakish::streams
             return result;
         }
     };
-    template<myakish::meta::TriviallyCopyable Type>
+    template<myakish::meta2::TriviallyCopyableConcept Type>
     inline constexpr ReadFunctor<Type> Read;
 
     struct AlignFunctor : functional::ExtensionMethod
@@ -610,7 +609,7 @@ namespace myakish::streams
     };
     inline constexpr WriteToRangeFunctor WriteToRange;
 
-    template<meta::TriviallyCopyable Type, Stream Underlying>
+    template<myakish::meta2::TriviallyCopyableConcept Type, Stream Underlying>
     struct StreamIterator
     {
         Underlying &&stream;

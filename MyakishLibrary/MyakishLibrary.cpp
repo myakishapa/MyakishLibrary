@@ -239,9 +239,7 @@ int main()
         PesData data;
         hv::Descriptor tree(data);
         
-        
-        constexpr auto asdf = myakish::meta::InstanceOf<myakish::tree::Descriptor>::template Func<decltype(tree)>::value;
-        
+                
         //auto test = hv::array::Range(0i64, 20i64)(tree);
         
         for (auto [index, desc] : tree | hv::array::Range(0i64, 20i64) | std::views::enumerate)
@@ -405,8 +403,6 @@ int main()
             {
                 return f + s;
             };
-
-        std::ranges::begin;
 
         constexpr auto test = myakish::RightFold(sum, 1);
         constexpr auto test3 = myakish::RightFold(sum, 1, 2, 3);

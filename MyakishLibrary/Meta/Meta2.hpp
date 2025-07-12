@@ -307,4 +307,14 @@ namespace myakish::meta2
         using type = QuotedCompose<Const, LRef, RRef>::template Function<To>::type;
     };
 
+
+    template<typename Type>
+    concept TriviallyCopyableConcept = std::is_trivially_copyable_v<Type>;
+
+    template<typename Type, typename Stripped>
+    concept SameBaseConcept = std::same_as<Stripped, std::remove_cvref_t<Type>>;
+
+    template<typename Type>
+    concept EnumConcept = std::is_scoped_enum_v<Type>;
+
 }

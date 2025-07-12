@@ -49,6 +49,6 @@ namespace myakish::streams
     template<typename Type>
     concept PersistentDataStream = InputStream<Type> && SizedStream<Type> && requires(Type stream)
     {
-        { stream.Data() } -> std::convertible_to<meta::ConstIfT<std::byte, !OutputStream<Type>>*>;
+        { stream.Data() } -> std::convertible_to<std::conditional_t<OutputStream<Type>, std::byte, const std::byte>*>;
     };
 }

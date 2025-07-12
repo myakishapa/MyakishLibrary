@@ -22,7 +22,4 @@ namespace myakish::tree::handle
 
         constexpr friend auto operator<=>(CombinedHash, CombinedHash) = default;
     };
-
-    //static_assert(ArrayDataHandle<CombinedHash>, "hv::CombinedHash should satisfy hv::ArrayDataHandle");
-    static_assert(myakish::meta::TriviallyCopyable<CombinedHash>, "hv::CombinedHash should satisfy TriviallyCopyable");
 }
