@@ -138,6 +138,9 @@
     <ClCompile Include="MyakishLibrary.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Algebraic\Accessors.hpp" />
+    <ClInclude Include="Algebraic\Algebraic.hpp" />
+    <ClInclude Include="Algebraic\Standard.hpp" />
     <ClInclude Include="Any.hpp" />
     <ClInclude Include="BinarySerializationSuite\BinarySerializationSuite.hpp" />
     <ClInclude Include="Core.hpp" />

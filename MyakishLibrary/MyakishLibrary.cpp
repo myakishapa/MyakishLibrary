@@ -33,6 +33,9 @@
 
 #include <MyakishLibrary/BinarySerializationSuite/BinarySerializationSuite.hpp>
 
+#include <MyakishLibrary/Algebraic/Algebraic.hpp>
+#include <MyakishLibrary/Algebraic/Standard.hpp>
+
 
 namespace st2 = myakish::streams;
 namespace hv = myakish::tree;
@@ -40,6 +43,7 @@ namespace dg = myakish::dependency_graph;
 namespace bst = myakish::binary_serialization_suite;
 namespace meta = myakish::meta;
 namespace hof = myakish::functional::higher_order;
+namespace alg = myakish::algebraic;
 
 using namespace myakish::functional::operators;
 using namespace hv::literals;
@@ -402,6 +406,70 @@ int main()
 
         constexpr auto test = myakish::RightFold(sum, 1);
         constexpr auto test3 = myakish::RightFold(sum, 1, 2, 3);
+    }
+
+    {
+        auto test = [](auto arg)
+            {
+                if (std::integral<decltype(arg)>) std::println("int {}", arg);
+                else std::println("not int {}", arg);
+            };
+
+        {
+            float f = 10.f;
+            float f2 = 15.f;
+
+            alg::Variant<float&, int> sum(f);
+
+
+
+            alg::Visit(sum, test);
+
+            f = 20.f;
+
+            sum.Emplace<1>(1);
+
+            sum | alg::Visit(test);
+
+            sum.Emplace<0>(f2);
+
+            auto val = sum.Get<0>();
+
+            std::println("{}", val);
+        }
+
+        {
+            float f = 10.f;
+
+            alg::Tuple<int, float&> tuple(1, f);
+
+            f = 20.f;
+
+            alg::Tuple<float, const float&> tuple2(tuple);
+
+            auto first = tuple | alg::Select(1);
+
+            first | alg::Visit(test);
+
+            std::println("{} {}", tuple2.Get<0>(), tuple2.Get<1>());
+        }
+
+        {
+            alg::Variant<int, float, long> var(alg::FromIndex<2>, 2l);
+            //std::variant<int, float, long> var(2l);
+
+
+
+            auto intToStr = [](int i) { return "kdfhgko"s; };
+            auto floatToInt = [](float f) { return 3; };
+            auto transformLong = [](long& l) { l = 4; return l; };
+
+            auto zipWith3 = [](auto arg) { return std::tuple(arg, 3); };
+
+            auto result = var | alg::Multitransform(intToStr, floatToInt, transformLong) | alg::Transform(zipWith3);
+
+            result | alg::Visit(test);
+        }
     }
 }
 

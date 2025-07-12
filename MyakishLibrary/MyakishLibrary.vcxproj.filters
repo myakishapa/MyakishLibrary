@@ -52,6 +52,9 @@
     <Filter Include="Header Files\BinarySerializationSuite">
       <UniqueIdentifier>{e473c8d6-2b53-494d-84ef-f73ea2140b7a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Algebraic">
+      <UniqueIdentifier>{7bce7cbd-1baa-43c7-9e0d-0c1f32603057}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MyakishLibrary.cpp">
@@ -136,6 +139,15 @@
     </ClInclude>
     <ClInclude Include="Meta.hpp">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Algebraic\Accessors.hpp">
+      <Filter>Header Files\Algebraic</Filter>
+    </ClInclude>
+    <ClInclude Include="Algebraic\Algebraic.hpp">
+      <Filter>Header Files\Algebraic</Filter>
+    </ClInclude>
+    <ClInclude Include="Algebraic\Standard.hpp">
+      <Filter>Header Files\Algebraic</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
