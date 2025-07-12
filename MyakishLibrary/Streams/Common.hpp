@@ -4,7 +4,8 @@
 #include <fstream>
 #include <ranges>
 
-#include <MyakishLibrary/Meta/Meta2.hpp>
+#include <MyakishLibrary/Meta.hpp>
+
 #include <MyakishLibrary/Streams/Concepts.hpp>
 
 #include <MyakishLibrary/Utility.hpp>
@@ -314,7 +315,7 @@ namespace myakish::streams
 
     struct WriteFunctor : functional::ExtensionMethod
     {
-        constexpr void ExtensionInvoke(OutputStream auto&& out, myakish::meta2::TriviallyCopyableConcept auto value) const
+        constexpr void ExtensionInvoke(OutputStream auto&& out, myakish::meta::TriviallyCopyableConcept auto value) const
         {
             out.Write(reinterpret_cast<const std::byte*>(&value), sizeof(value));
         }
@@ -326,7 +327,7 @@ namespace myakish::streams
     };
     inline constexpr WriteFunctor Write;
 
-    template<myakish::meta2::TriviallyCopyableConcept Type>
+    template<myakish::meta::TriviallyCopyableConcept Type>
     struct WriteAsFunctor : functional::ExtensionMethod
     {
         constexpr void ExtensionInvoke(OutputStream auto&& out, Type value) const
@@ -339,10 +340,10 @@ namespace myakish::streams
             out.Write(reinterpret_cast<const std::byte*>(str.data()), str.size());
         }
     };
-    template<myakish::meta2::TriviallyCopyableConcept Type>
+    template<myakish::meta::TriviallyCopyableConcept Type>
     inline constexpr WriteAsFunctor<Type> WriteAs;
 
-    template<myakish::meta2::TriviallyCopyableConcept Type>
+    template<myakish::meta::TriviallyCopyableConcept Type>
     struct ReadFunctor : functional::ExtensionMethod
     {
         constexpr Type ExtensionInvoke(InputStream auto&& in) const
@@ -352,7 +353,7 @@ namespace myakish::streams
             return result;
         }
     };
-    template<myakish::meta2::TriviallyCopyableConcept Type>
+    template<myakish::meta::TriviallyCopyableConcept Type>
     inline constexpr ReadFunctor<Type> Read;
 
     struct AlignFunctor : functional::ExtensionMethod
@@ -609,7 +610,7 @@ namespace myakish::streams
     };
     inline constexpr WriteToRangeFunctor WriteToRange;
 
-    template<myakish::meta2::TriviallyCopyableConcept Type, Stream Underlying>
+    template<myakish::meta::TriviallyCopyableConcept Type, Stream Underlying>
     struct StreamIterator
     {
         Underlying &&stream;

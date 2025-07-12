@@ -13,9 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Header Files\Meta">
-      <UniqueIdentifier>{29acc503-8960-4588-86e4-92b77fd03b4f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\Streams">
       <UniqueIdentifier>{bd4dc624-8280-43e6-a952-58350502fd23}</UniqueIdentifier>
     </Filter>
@@ -74,9 +71,6 @@
     <ClInclude Include="Math\Common.hpp">
       <Filter>Header Files\Math</Filter>
     </ClInclude>
-    <ClInclude Include="Enum\Dynamic.hpp">
-      <Filter>Header Files\Enum</Filter>
-    </ClInclude>
     <ClInclude Include="Enum\BitwiseOperators.hpp">
       <Filter>Header Files\Enum</Filter>
     </ClInclude>
@@ -131,9 +125,6 @@
     <ClInclude Include="Functional\ExtensionMethod.hpp">
       <Filter>Header Files\Functional</Filter>
     </ClInclude>
-    <ClInclude Include="Meta\Meta2.hpp">
-      <Filter>Header Files\Meta</Filter>
-    </ClInclude>
     <ClInclude Include="BinarySerializationSuite\BinarySerializationSuite.hpp">
       <Filter>Header Files\BinarySerializationSuite</Filter>
     </ClInclude>
@@ -142,6 +133,9 @@
     </ClInclude>
     <ClInclude Include="Functional\HigherOrder.hpp">
       <Filter>Header Files\Functional</Filter>
+    </ClInclude>
+    <ClInclude Include="Meta.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

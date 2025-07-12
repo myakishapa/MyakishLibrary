@@ -1,7 +1,7 @@
 #pragma once
 #include <utility>
 
-#include <MyakishLibrary/Meta/Concepts.hpp>
+#include <MyakishLibrary/Meta.hpp>
 
 namespace myakish
 {

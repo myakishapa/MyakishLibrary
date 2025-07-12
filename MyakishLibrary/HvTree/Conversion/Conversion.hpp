@@ -8,7 +8,7 @@
 
 #include <MyakishLibrary/HvTree/HvTree.hpp>
 
-#include <MyakishLibrary/Meta/Meta2.hpp>
+#include <MyakishLibrary/Meta.hpp>
 
 namespace myakish::tree::conversion
 {
@@ -19,7 +19,7 @@ namespace myakish::tree::conversion
     struct EnableTrivialConversion<Range> : std::false_type {};
 
     template<typename Type>
-    concept TriviallyConvertible = EnableTrivialConversion<Type>::value && meta2::TriviallyCopyableConcept<Type>;
+    concept TriviallyConvertible = EnableTrivialConversion<Type>::value && meta::TriviallyCopyableConcept<Type>;
 
     template<TriviallyConvertible Type>
     struct HvToType<Type>

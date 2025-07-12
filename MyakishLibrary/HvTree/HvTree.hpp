@@ -236,14 +236,14 @@ namespace myakish::tree
                 conversion::TypeToHv<std::remove_cvref_t<Type>>::Convert(*this, std::forward<Type>(value), std::forward<Args>(args)...);
             }
         }
-        template<typename Type> requires (!meta2::InstanceOfConcept<Type, myakish::tree::Descriptor>)
+        template<typename Type> requires (!meta::InstanceOfConcept<Type, myakish::tree::Descriptor>)
         void operator=(Type&& value) const
         {
             return Store(std::forward<Type>(value));
         }
 
 
-        template<typename Type, typename ...Args> requires (!meta2::InstanceOfConcept<Type, myakish::tree::Descriptor>)
+        template<typename Type, typename ...Args> requires (!meta::InstanceOfConcept<Type, myakish::tree::Descriptor>)
         auto Acquire(Args&&... args) const
         {
             if constexpr (conversion::HvToType<Type>::UseBinary)

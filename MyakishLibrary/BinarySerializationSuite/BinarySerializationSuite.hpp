@@ -12,7 +12,7 @@
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 #include <MyakishLibrary/Functional/Algebraic.hpp>
 
-#include <MyakishLibrary/Meta/Meta2.hpp>
+#include <MyakishLibrary/Meta.hpp>
 
 
 namespace myakish::binary_serialization_suite
@@ -236,7 +236,7 @@ namespace myakish::binary_serialization_suite
 
 
         template<streams::Stream Stream>
-        void IO(Stream&& stream, myakish::meta2::SameBaseConcept<Type> auto&& attribute) const
+        void IO(Stream&& stream, myakish::meta::SameBaseConcept<Type> auto&& attribute) const
         {
             parser.IO(stream, attribute);
         }

@@ -8,12 +8,8 @@
 
 #include <MyakishLibrary/Any.hpp>
 
-#include <MyakishLibrary/Meta/Concepts.hpp>
-#include <MyakishLibrary/Meta/Functions.hpp>
-#include <MyakishLibrary/Meta/Pack.hpp>
-#include <MyakishLibrary/Meta/Tag.hpp>
 
-#include <MyakishLibrary/Meta/Meta2.hpp>
+#include <MyakishLibrary/Meta.hpp>
 
 #include <MyakishLibrary/Streams/Concepts.hpp>
 #include <MyakishLibrary/Streams/Common.hpp>
@@ -42,7 +38,7 @@ namespace st2 = myakish::streams;
 namespace hv = myakish::tree;
 namespace dg = myakish::dependency_graph;
 namespace bst = myakish::binary_serialization_suite;
-namespace meta = myakish::meta2;
+namespace meta = myakish::meta;
 namespace hof = myakish::functional::higher_order;
 
 using namespace myakish::functional::operators;

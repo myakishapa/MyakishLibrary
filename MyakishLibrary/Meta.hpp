@@ -5,7 +5,7 @@
 
 #include <MyakishLibrary/Core.hpp>
 
-namespace myakish::meta2
+namespace myakish::meta
 {
     struct UndefinedResult {};
 
@@ -72,7 +72,7 @@ namespace myakish::meta2
     template<template<typename...> typename Template, typename ...Args>
     struct ExtractArguments<Template<Args...>> : ReturnType<TypeList<Args...>> {};
 
-    
+
     template<template<typename...> typename Template>
     struct Instantiate
     {
@@ -87,7 +87,7 @@ namespace myakish::meta2
     template<template<typename...> typename Function, typename ...Types>
     struct Invoke<Function, TypeList<Types...>> : Function<Types...> {};
 
-    
+
     template<typename Quoted, typename List>
     struct QuotedInvoke : Invoke<Quoted::template Function, List> {};
 
@@ -121,7 +121,7 @@ namespace myakish::meta2
     template<typename Type>
     concept TypeListConcept = InstanceOfConcept<Type, TypeList>;
 
-    
+
     template<template<typename...> typename Underlying>
     struct Quote
     {
@@ -129,9 +129,9 @@ namespace myakish::meta2
         struct Function : Underlying<Args...> {};
     };
 
-    
 
-    
+
+
     template<template<typename, typename> typename Func, typename NonList>
     struct RightFold : Undefined {};
 
@@ -169,7 +169,7 @@ namespace myakish::meta2
         struct BinaryConcat : BinaryConcatImpl<List1>::template With<List2> {};
     }
 
-    template<typename... Lists> 
+    template<typename... Lists>
     struct Concat : RightFold<detail::BinaryConcat, TypeList<Lists...>> {};
 
 
@@ -227,7 +227,7 @@ namespace myakish::meta2
         using begin = std::conditional_t<Func<First>::value, TypeList<First>, TypeList<>>;
 
     public:
-        
+
         using type = Concat<begin, typename Filter<Func, TypeList<Rest...>>::type>::type;
     };
 

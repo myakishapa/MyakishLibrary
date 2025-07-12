@@ -142,7 +142,6 @@
     <ClInclude Include="BinarySerializationSuite\BinarySerializationSuite.hpp" />
     <ClInclude Include="Core.hpp" />
     <ClInclude Include="DependencyGraph\Graph.hpp" />
-    <ClInclude Include="Enum\Dynamic.hpp" />
     <ClInclude Include="Enum\BitwiseOperators.hpp" />
     <ClInclude Include="Functional\ExtensionMethod.hpp" />
     <ClInclude Include="Functional\HigherOrder.hpp" />
@@ -160,7 +159,7 @@
     <ClInclude Include="HvTree\Parser\Parser.hpp" />
     <ClInclude Include="HvTree\Parser\Spirit.hpp" />
     <ClInclude Include="Math\Common.hpp" />
-    <ClInclude Include="Meta\Meta2.hpp" />
+    <ClInclude Include="Meta.hpp" />
     <ClInclude Include="Ranges\Bit.hpp" />
     <ClInclude Include="Streams\Common.hpp" />
     <ClInclude Include="Streams\Concepts.hpp" />

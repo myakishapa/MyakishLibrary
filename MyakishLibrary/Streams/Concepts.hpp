@@ -4,7 +4,7 @@
 #include <fstream>
 #include <filesystem>
 
-#include <MyakishLibrary/Meta/Concepts.hpp>
+#include <MyakishLibrary/Meta.hpp>
 #include <MyakishLibrary/Core.hpp>
 
 namespace myakish::streams

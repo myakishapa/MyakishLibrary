@@ -8,7 +8,7 @@
 #include <filesystem>
 #include <ranges>
 
-#include <MyakishLibrary/Meta/Functions.hpp>
+#include <MyakishLibrary/Meta.hpp>
 #include <MyakishLibrary/Core.hpp>
 
 namespace myakish

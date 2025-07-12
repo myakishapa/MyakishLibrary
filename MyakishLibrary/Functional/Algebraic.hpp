@@ -4,7 +4,7 @@
 
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 
-#include <MyakishLibrary/Meta/Meta2.hpp>
+#include <MyakishLibrary/Meta.hpp>
 
 namespace myakish::functional::algebraic
 {
@@ -13,22 +13,22 @@ namespace myakish::functional::algebraic
     namespace detail
     {
         template<typename Type>
-        concept Variant = meta2::InstanceOfConcept<Type, std::variant>;
+        concept Variant = meta::InstanceOfConcept<Type, std::variant>;
 
         template<Variant VariantType, typename... Functions>
         struct VariantMultitransformReturnType
         {
-            using TypesList = meta2::ExtractArguments<std::remove_cvref_t<VariantType>>::type;
+            using TypesList = meta::ExtractArguments<std::remove_cvref_t<VariantType>>::type;
 
-            using CopyQualifiersFromVariant = meta2::LeftCurry<meta2::CopyQualifiers, VariantType>;
-            using QualifiedTypesList = meta2::QuotedApply<CopyQualifiersFromVariant, TypesList>::type;
+            using CopyQualifiersFromVariant = meta::LeftCurry<meta::CopyQualifiers, VariantType>;
+            using QualifiedTypesList = meta::QuotedApply<CopyQualifiersFromVariant, TypesList>::type;
 
-            using TypesFunctionsZipped = meta2::Zip<meta2::TypeList<Functions...>, QualifiedTypesList>::type;
+            using TypesFunctionsZipped = meta::Zip<meta::TypeList<Functions...>, QualifiedTypesList>::type;
 
-            using ResultMetafunction = meta2::LeftCurry<meta2::QuotedInvoke, meta2::Quote<std::invoke_result>>;
-            using Results = meta2::QuotedApply<ResultMetafunction, TypesFunctionsZipped>::type;
+            using ResultMetafunction = meta::LeftCurry<meta::QuotedInvoke, meta::Quote<std::invoke_result>>;
+            using Results = meta::QuotedApply<ResultMetafunction, TypesFunctionsZipped>::type;
 
-            using type = meta2::QuotedInvoke<meta2::Instantiate<std::variant>, Results>::type;
+            using type = meta::QuotedInvoke<meta::Instantiate<std::variant>, Results>::type;
         };
 
 
@@ -55,7 +55,7 @@ namespace myakish::functional::algebraic
     namespace detail
     {
         template<typename Type>
-        concept Tuple = meta2::InstanceOfConcept<Type, std::tuple>;
+        concept Tuple = meta::InstanceOfConcept<Type, std::tuple>;
 
         template<Tuple TupleType, typename ...Functions, std::size_t ...Indices>
         auto Multitransform(TupleType &&tuple, std::index_sequence<Indices...>, std::tuple<Functions...> functions)
@@ -101,15 +101,15 @@ namespace myakish::functional::algebraic
         template<Variant VariantType, typename Function>
         struct VariantTransformReturnType
         {
-            using TypesList = meta2::ExtractArguments<std::remove_cvref_t<VariantType>>::type;
+            using TypesList = meta::ExtractArguments<std::remove_cvref_t<VariantType>>::type;
 
-            using CopyQualifiersFromVariant = meta2::LeftCurry<meta2::CopyQualifiers, VariantType>;
-            using QualifiedTypesList = meta2::QuotedApply<CopyQualifiersFromVariant, TypesList>::type;
+            using CopyQualifiersFromVariant = meta::LeftCurry<meta::CopyQualifiers, VariantType>;
+            using QualifiedTypesList = meta::QuotedApply<CopyQualifiersFromVariant, TypesList>::type;
 
-            using ResultMetafunction = meta2::LeftCurry<std::invoke_result, Function>;
-            using Results = meta2::QuotedApply<ResultMetafunction, QualifiedTypesList>::type;
+            using ResultMetafunction = meta::LeftCurry<std::invoke_result, Function>;
+            using Results = meta::QuotedApply<ResultMetafunction, QualifiedTypesList>::type;
 
-            using type = meta2::QuotedInvoke<meta2::Instantiate<std::variant>, Results>::type;
+            using type = meta::QuotedInvoke<meta::Instantiate<std::variant>, Results>::type;
         };
 
         template<Variant VariantType, typename Function>
@@ -159,9 +159,9 @@ namespace myakish::functional::algebraic
         template<Tuple TupleType>
         struct SelectReturnType
         {
-            using TypesList = meta2::ExtractArguments<std::remove_cvref_t<TupleType>>::type;
+            using TypesList = meta::ExtractArguments<std::remove_cvref_t<TupleType>>::type;
 
-            using type = meta2::QuotedInvoke<meta2::Instantiate<std::variant>, TypesList>::type;
+            using type = meta::QuotedInvoke<meta::Instantiate<std::variant>, TypesList>::type;
         };
 
         template<std::size_t CurrentIndex, Tuple TupleType> requires (CurrentIndex >= std::tuple_size_v<std::remove_cvref_t<TupleType>>)
