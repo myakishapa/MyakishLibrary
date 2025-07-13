@@ -345,9 +345,7 @@ int main()
         auto out = data | st2::WriteToRange;
         auto in = data | st2::ReadFromRange;
         
-        std::variant<int, float> val = 20.f;
-
-        using jkdfgjkgdf = alg::ValueTypes< alg::Variant<int, float>>::type;
+        alg::Variant<int, float> val = 20.f;
 
         auto var = bst::VariantParser(bst::Int, bst::Trivial<float>, bst::Trivial<long double>);
         auto rule = bst::Engage(hof::Constant(1), std::identity{}) >> var;
@@ -362,7 +360,7 @@ int main()
 
         out | st2::Write(10.f);
 
-
+        using AList = alg::Variant<int, float>::AccessorList;
 
         rule.IO(in, val);
 

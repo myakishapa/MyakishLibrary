@@ -119,6 +119,9 @@ namespace myakish::algebraic
         };
     }
 
+    struct CantDeduceConvertionType {};
+    inline constexpr CantDeduceConvertionType CantDeduceConvertion;
+
     namespace detail
     {
         template<typename ...Bases>
@@ -131,6 +134,12 @@ namespace myakish::algebraic
         struct DeducerMetafunction
         {
             using type = Base::template DeduceConvertion<Index::value>;
+        };
+
+        template<typename Overloads, typename... Args>
+        concept ConvertionDeducible = requires(Args&&... args)
+        {
+            Overloads::Deduce(std::forward<Args>(args)...);
         };
 
         template<AccessorConcept ...Bases>
@@ -147,8 +156,15 @@ namespace myakish::algebraic
 
             using Overloads = meta::QuotedInvoke<meta::Instantiate<DeduceOverloads>, Deducers>::type;
 
+
             template<typename ...Args>
             struct Result
+            {
+                inline constexpr static auto value = CantDeduceConvertion;
+            };
+
+            template<typename ...Args> requires ConvertionDeducible<Overloads, Args&&...>
+            struct Result<Args...>
             {
                 inline constexpr static auto value = decltype(Overloads::Deduce(std::declval<Args>()...))::value;
             };
@@ -166,4 +182,6 @@ namespace myakish::algebraic
         inline constexpr static auto value = Result::value;
     };
 
+    template<typename AccessorsList, typename ArgsList>
+    concept ConvertionDeducible = !std::same_as<std::remove_cvref_t<decltype(DeduceConvertion<AccessorsList, ArgsList>::value)>, CantDeduceConvertionType>;
 }

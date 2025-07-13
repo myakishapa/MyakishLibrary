@@ -268,7 +268,7 @@ namespace myakish::algebraic
         }
 
         template<typename ...Args>
-        void Create(Args&&... args)
+        void Create(Args&&... args) requires ConvertionDeducible<AccessorList, meta::TypeList<Args&&...>>
         {
             using ArgsList = meta::TypeList<Args&&...>;
             
@@ -304,7 +304,7 @@ namespace myakish::algebraic
         }
 
         template<typename ...Args>
-        Sum(Args&&... args)
+        Sum(Args&&... args) requires ConvertionDeducible<AccessorList, meta::TypeList<Args&&...>>
         {
             Create(std::forward<Args>(args)...);
         }
@@ -572,7 +572,9 @@ namespace myakish::algebraic
             using ResultMetafunction = meta::LeftCurry<meta::QuotedInvoke, meta::Quote<std::invoke_result>>;
             using Results = meta::QuotedApply<ResultMetafunction, Zipped>::type;
 
-            using type = meta::QuotedInvoke<meta::Instantiate<Variant>, Results>::type;
+            using InstantiateMetafunction = std::conditional_t<SumConcept<Type>, meta::Instantiate<Variant>, meta::Instantiate<Tuple>>;
+
+            using type = meta::QuotedInvoke<InstantiateMetafunction, Results>::type;
         };
 
 
@@ -682,7 +684,7 @@ namespace myakish::algebraic
     struct CastFunctor : functional::ExtensionMethod
     {
         template<SumConcept From>
-        auto ExtensionInvoke(From&& from) const
+        To ExtensionInvoke(From&& from) const
         {
             auto CastFunc = []<typename Arg>(Arg && arg) -> To
             {

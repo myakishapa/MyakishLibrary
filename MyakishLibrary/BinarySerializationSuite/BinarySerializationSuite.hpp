@@ -260,7 +260,7 @@ namespace myakish::binary_serialization_suite
             //using namespace functional::algebraic;
             using namespace functional::operators;
             
-           // variant = algebraic::Synthesize<std::remove_cvref_t<Variant>>(index);
+            variant = algebraic::Synthesize<std::remove_cvref_t<Variant>>(index);
         }
 
         template<streams::OutputStream Stream, typename Variant>
@@ -296,7 +296,7 @@ namespace myakish::binary_serialization_suite
                         };
                 };
 
-            //attribute = std::forward<ArgAttribute>(attribute) | algebraic::Cast<Attribute>() | algebraic::Apply(parsers | algebraic::Transform(ParseWith), algebraic::Multitransform) | algebraic::Cast<std::remove_cvref_t<ArgAttribute>>();
+            attribute = std::forward<ArgAttribute>(attribute) | algebraic::Cast<Attribute>() | algebraic::Apply(parsers | algebraic::Transform(ParseWith), algebraic::Multitransform) | algebraic::Cast<std::remove_cvref_t<ArgAttribute>>();
         }
     };
 

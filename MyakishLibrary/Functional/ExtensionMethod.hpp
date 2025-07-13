@@ -69,8 +69,13 @@ namespace myakish::functional
         template<typename Self, typename ...Args>
         decltype(auto) operator()(this Self&& self, Args&&... args)
         {
-            if constexpr (detail::DirectExtensionInvocable<Self, Args...>) return std::forward<Self>(self).ExtensionInvoke(std::forward<Args>(args)...);
-            else return ExtensionClosure<Self, Args...>(std::forward<Self>(self), std::forward<Args>(args)...);
+            return ExtensionClosure<Self, Args...>(std::forward<Self>(self), std::forward<Args>(args)...);
+        }
+
+        template<typename Self, typename ...Args> requires detail::DirectExtensionInvocable<Self&&, Args&&...>
+        decltype(auto) operator()(this Self&& self, Args&&... args)
+        {
+            return std::forward<Self>(self).ExtensionInvoke(std::forward<Args>(args)...);
         }
     };
 
