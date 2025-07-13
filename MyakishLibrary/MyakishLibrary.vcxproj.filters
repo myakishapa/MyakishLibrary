@@ -131,9 +131,6 @@
     <ClInclude Include="BinarySerializationSuite\BinarySerializationSuite.hpp">
       <Filter>Header Files\BinarySerializationSuite</Filter>
     </ClInclude>
-    <ClInclude Include="Functional\Algebraic.hpp">
-      <Filter>Header Files\Functional</Filter>
-    </ClInclude>
     <ClInclude Include="Functional\HigherOrder.hpp">
       <Filter>Header Files\Functional</Filter>
     </ClInclude>

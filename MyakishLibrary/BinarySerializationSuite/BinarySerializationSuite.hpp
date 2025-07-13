@@ -10,7 +10,6 @@
 
 #include <MyakishLibrary/Functional/Pipeline.hpp>
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
-//#include <MyakishLibrary/Functional/Algebraic.hpp>
 
 #include <MyakishLibrary/Meta.hpp>
 
