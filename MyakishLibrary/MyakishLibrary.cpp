@@ -15,7 +15,6 @@
 #include <MyakishLibrary/Streams/Common.hpp>
 
 #include <MyakishLibrary/Functional/Pipeline.hpp>
-#include <MyakishLibrary/Functional/Algebraic.hpp>
 #include <MyakishLibrary/Functional/HigherOrder.hpp>
 
 #include <MyakishLibrary/Utility.hpp>
@@ -316,7 +315,7 @@ int main()
     }
 
     {        
-        using namespace myakish::functional::algebraic;
+        using namespace myakish::algebraic;
 
 
         std::variant<int, float, long> var = 2l;
@@ -333,7 +332,7 @@ int main()
 
         auto result2 = std::move(tuple) | Select(2);
 
-        auto synth = Synthesize<std::variant<int, double, std::string>>(2);
+        auto synth = Synthesize<alg::Variant<int, double, std::string>>(2);
 
         std::println();
     }
@@ -359,8 +358,6 @@ int main()
         //rule.IO(out | st2::WriteOnly, val);
 
         out | st2::Write(10.f);
-
-        using AList = alg::Variant<int, float>::AccessorList;
 
         rule.IO(in, val);
 
