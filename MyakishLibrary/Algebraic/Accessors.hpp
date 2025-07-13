@@ -69,6 +69,16 @@ namespace myakish::algebraic
             {
                 AcquireRaw(storage).~ValueType();
             }
+
+
+            template<Size Index>
+            struct DeduceConvertion
+            {
+                static meta::ValueType<Index> Deduce(ValueType)
+                {
+                    return {};
+                }
+            };
         };
 
         template<typename ReferenceType>
@@ -95,7 +105,65 @@ namespace myakish::algebraic
             {
                 //noop
             }
+
+            template<Size Index>
+            struct DeduceConvertion
+            {
+                static meta::ValueType<Index> Deduce(ReferenceType)
+                {
+                    return {};
+                }
+            };
+
+
         };
     }
+
+    namespace detail
+    {
+        template<typename ...Bases>
+        struct DeduceOverloads : Bases...
+        {
+            using Bases::Deduce...;
+        };
+
+        template<typename Base, typename Index>
+        struct DeducerMetafunction
+        {
+            using type = Base::template DeduceConvertion<Index::value>;
+        };
+
+        template<AccessorConcept ...Bases>
+        struct DeduceConvertionImpl
+        {
+            using Indices = meta::IntegerSequence<myakish::Size, sizeof...(Bases)>::type;
+            using BaseList = meta::TypeList<Bases...>;
+
+            using Zipped = meta::Zip<BaseList, Indices>::type;
+
+            using DeducerFunc = meta::LeftCurry<meta::QuotedInvoke, meta::Quote<DeducerMetafunction>>;
+
+            using Deducers = meta::QuotedApply<DeducerFunc, Zipped>::type;
+
+            using Overloads = meta::QuotedInvoke<meta::Instantiate<DeduceOverloads>, Deducers>::type;
+
+            template<typename ...Args>
+            struct Result
+            {
+                inline constexpr static auto value = decltype(Overloads::Deduce(std::declval<Args>()...))::value;
+            };
+        };
+
+    }
+
+    template<typename AccessorsList, typename ArgsList>
+    struct DeduceConvertion
+    {
+        using Impl = meta::QuotedInvoke<meta::Instantiate<detail::DeduceConvertionImpl>, AccessorsList>::type;
+
+        using Result = meta::QuotedInvoke<meta::Instantiate<Impl::template Result>, ArgsList>::type;
+
+        inline constexpr static auto value = Result::value;
+    };
 
 }

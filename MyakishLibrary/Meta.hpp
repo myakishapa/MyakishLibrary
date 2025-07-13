@@ -64,6 +64,24 @@ namespace myakish::meta
     struct QuotedFirst : First<Quoted::template Function, Arg> {};
 
 
+    template<auto Value>
+    struct ValueType : ReturnValue<Value> {};
+
+    template<auto... Values>
+    struct AsTypes : ReturnType<TypeList<ValueType<Values>...>> {};
+
+
+    namespace detail
+    {
+        template<typename>
+        struct IntegerSequence {};
+
+        template<std::integral Type, Type... Values>
+        struct IntegerSequence<std::integer_sequence<Type, Values...>> : AsTypes<Values...> {};
+    }
+
+    template<std::integral Type, myakish::Size Count>
+    struct IntegerSequence : detail::IntegerSequence<std::make_integer_sequence<Type, Count>> {};
 
 
     template<typename Arg>

@@ -270,8 +270,12 @@ namespace myakish::algebraic
         template<typename ...Args>
         void Create(Args&&... args)
         {
-            using Predicate = meta::RightCurry<IndirectlyConstructibleFrom, Args&&...>;
-            constexpr auto Index = meta::QuotedFirst<Predicate, AccessorList>::value;
+            using ArgsList = meta::TypeList<Args&&...>;
+            
+            constexpr auto Index = DeduceConvertion<AccessorList, ArgsList>::value;
+
+            //using Predicate = meta::RightCurry<IndirectlyConstructibleFrom, Args&&...>;
+            //constexpr auto Index = meta::QuotedFirst<Predicate, AccessorList>::value;
 
             Create<Index>(std::forward<Args>(args)...);
         }
@@ -409,7 +413,7 @@ namespace myakish::algebraic
             constexpr std::array Sizes = { SizeRequirements<Accessors>... };
             constexpr std::array Alignments = { AlignmentRequirements<Accessors>... };
 
-            std::array<myakish::Size, Count> result;
+            OffsetsType result;
 
             myakish::Size currentOffset = 0;
 
@@ -425,10 +429,10 @@ namespace myakish::algebraic
 
         using AccessorList = meta::TypeList<Accessors...>;
 
-        inline constexpr static OffsetsType Offsets = CalculateOffsets().Offsets;
+        inline constexpr static auto Offsets = CalculateOffsets().Offsets;
         inline constexpr static auto Size = CalculateOffsets().Size;
         inline constexpr static auto Max = [](auto first, auto second) { return std::max(first, second); };
-        inline constexpr static auto Alignment = myakish::RightFold(Max, AlignmentRequirements<Accessors>...);
+        inline constexpr static auto Alignment = myakish::RightFold(Max, myakish::Size(1), AlignmentRequirements<Accessors>...);
 
         template<myakish::Size Index>
         inline constexpr static auto Offset = Offsets[Index];
@@ -513,6 +517,13 @@ namespace myakish::algebraic
         }
     };
 
+    template<>
+    struct Product<> : AlgebraicTag
+    {
+        inline constexpr static myakish::Size Count = 0;
+
+        Product() {}      
+    };
 
 
 
@@ -702,4 +713,25 @@ namespace myakish::algebraic
     };
     template<SumConcept Type>
     inline constexpr SynthesizeFunctor<Type> Synthesize;
+
+
+    namespace detail
+    {
+        template<typename Function, ProductConcept Type, myakish::Size ...Indices>
+        decltype(auto) Apply(Type&& product, Function&& function, std::integer_sequence<myakish::Size, Indices...>)
+        {
+            return std::invoke(std::forward<Function>(function), Get<Indices>(std::forward<Type>(product))...);
+        }
+    }
+
+    struct ApplyFunctor : functional::ExtensionMethod
+    {
+        template<typename Function, ProductConcept Type>
+        decltype(auto) ExtensionInvoke(Type&& product, Function&& function) const
+        {
+            return detail::Apply(std::forward<Type>(product), std::forward<Function>(function), std::make_integer_sequence<myakish::Size, Count<Type&&>>{});
+        }
+    };
+    inline constexpr ApplyFunctor Apply;
+
 }

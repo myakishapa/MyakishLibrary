@@ -347,9 +347,15 @@ int main()
         
         std::variant<int, float> val = 20.f;
 
-        auto var = bst::Int | bst::Trivial<float> | bst::Trivial<long double>;
+        using jkdfgjkgdf = alg::ValueTypes< alg::Variant<int, float>>::type;
+
+        auto var = bst::VariantParser(bst::Int, bst::Trivial<float>, bst::Trivial<long double>);
         auto rule = bst::Engage(hof::Constant(1), std::identity{}) >> var;
         
+        using Attribute = decltype(var)::Attribute;
+
+        auto cast = std::move(val) | alg::Cast<Attribute>();
+
         auto test = std::invoke(hof::Constant(1), var);
 
         //rule.IO(out | st2::WriteOnly, val);
@@ -455,7 +461,7 @@ int main()
         }
 
         {
-            alg::Variant<int, float, long> var(alg::FromIndex<2>, 2l);
+            alg::Variant<int, float, long> var(2l);
             //std::variant<int, float, long> var(2l);
 
 
@@ -469,6 +475,13 @@ int main()
             auto result = var | alg::Multitransform(intToStr, floatToInt, transformLong) | alg::Transform(zipWith3);
 
             result | alg::Visit(test);
+        }
+
+        {
+            using accessors = meta::TypeList<alg::accessors::Value<int>, alg::accessors::Reference<const float&>>;
+            using args = meta::TypeList<float&>;
+
+            constexpr auto a = alg::DeduceConvertion<accessors, args>::value;
         }
     }
 }
