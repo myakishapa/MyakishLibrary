@@ -218,8 +218,8 @@ namespace myakish::binary_serialization_suite
         constexpr RuleParser(Parser parser) : parser(std::move(parser)) {}
 
 
-        template<streams::Stream Stream>
-        void IO(Stream&& stream, myakish::meta::SameBaseConcept<Type> auto&& attribute) const
+        template<streams::Stream Stream, typename ArgAttribute>
+        void IO(Stream&& stream, ArgAttribute&& attribute) const
         {
             parser.IO(stream, attribute);
         }
