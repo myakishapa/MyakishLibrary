@@ -478,6 +478,24 @@ int main()
 
             constexpr auto a = alg::DeduceConvertion<accessors, args>::value;
         }
+
+        {
+            alg::Variant<int, float, long> var(2l);
+            
+            auto t1 = var | alg::HoldsAlternative<long>;
+            auto t2 = var | alg::HoldsAlternative<long&>;
+            auto t3 = var | alg::HoldsAlternative<long, std::is_same>;
+            auto t4 = var | alg::HoldsAlternative<long&, std::is_same>;
+            auto t5 = var | alg::HoldsAlternative<int, std::is_same>;
+
+            std::println();
+        }
+
+        {
+            alg::Variant<int, float, long> var;
+            
+            std::println();
+        }
     }
 }
 

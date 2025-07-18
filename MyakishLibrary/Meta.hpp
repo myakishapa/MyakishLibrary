@@ -326,11 +326,15 @@ namespace myakish::meta
     };
 
 
+    template<typename First, typename Second>
+    struct SameBase : std::is_same<std::remove_cvref_t<First>, std::remove_cvref_t<Second>> {};
+
+
     template<typename Type>
     concept TriviallyCopyableConcept = std::is_trivially_copyable_v<Type>;
 
-    template<typename Type, typename Stripped>
-    concept SameBaseConcept = std::same_as<Stripped, std::remove_cvref_t<Type>>;
+    template<typename First, typename Second>
+    concept SameBaseConcept = SameBase<First, Second>::value;
 
     template<typename Type>
     concept EnumConcept = std::is_scoped_enum_v<Type>;

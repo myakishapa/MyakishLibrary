@@ -65,7 +65,14 @@ namespace myakish::binary_serialization_suite
     };
 
 
-    
+    struct NoOpParser : ParserBase
+    {
+        void IO(streams::Stream auto&&, auto&&... _) const
+        {
+
+        }
+    };
+    inline constexpr NoOpParser NoOp;
 
     template<typename Type, typename Attribute>
     concept AttributeLike = requires(Type attributeLike, Attribute attribute)

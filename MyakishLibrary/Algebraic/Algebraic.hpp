@@ -226,6 +226,44 @@ namespace myakish::algebraic
     };
     inline constexpr VisitFunctor Visit;
 
+    template<typename Alternative, template<typename, typename> typename Comparator = meta::SameBase>
+    struct HoldsAlternativeFunctor : functional::ExtensionMethod
+    {
+        template<SumConcept Type>
+        bool ExtensionInvoke(Type&& sum) const
+        {
+            auto Func = [&]<typename Arg>(Arg&&) -> bool
+            {
+                return Comparator<Arg&&, Alternative>::value;
+            };
+
+            return Visit(std::forward<Type>(sum), Func);
+        }
+
+    };
+    template<typename Alternative, template<typename, typename> typename Comparator = meta::SameBase>
+    inline constexpr HoldsAlternativeFunctor<Alternative, Comparator> HoldsAlternative;
+
+
+    template<typename Alternative, template<typename, typename> typename Comparator = meta::SameBase>
+    struct GetByTypeFunctor : functional::ExtensionMethod
+    {
+        template<SumConcept Type>
+        Alternative ExtensionInvoke(Type&& sum) const
+        {
+            auto Func = [&]<typename Arg>(Arg&& arg) -> Alternative
+            {
+                if constexpr (Comparator<Arg&&, Alternative>::value) return std::forward<Arg>(arg);
+                else std::unreachable();
+            };
+
+            return Visit(std::forward<Type>(sum), Func);
+        }
+
+    };
+    template<typename Alternative, template<typename, typename> typename Comparator = meta::SameBase>
+    inline constexpr GetByTypeFunctor<Alternative, Comparator> GetByType;
+
 
 #pragma warning(disable: 26495) // storage is deliberatly left inititialized
 
@@ -271,7 +309,7 @@ namespace myakish::algebraic
         void Create(Args&&... args) requires ConvertionDeducible<AccessorList, meta::TypeList<Args&&...>>
         {
             using ArgsList = meta::TypeList<Args&&...>;
-            
+
             constexpr auto Index = DeduceConvertion<AccessorList, ArgsList>::value;
 
             //using Predicate = meta::RightCurry<IndirectlyConstructibleFrom, Args&&...>;
@@ -309,6 +347,13 @@ namespace myakish::algebraic
             Create(std::forward<Args>(args)...);
         }
 
+        Sum() requires(IndirectlyConstructibleFrom<Accessors>::value || ...)
+        {
+            using Predicate = meta::RightCurry<IndirectlyConstructibleFrom>;
+            constexpr auto Index = meta::QuotedFirst<Predicate, AccessorList>::value;
+
+            Create<Index>();
+        }
 
         IndexType Index() const
         {
@@ -350,12 +395,12 @@ namespace myakish::algebraic
 
 
 
+
     template<typename Type>
     concept ProductConcept = AlgebraicConcept<Type> && !SumConcept<Type> && requires(Type && type)
     {
         true;
     };
-
 
 
     namespace detail
@@ -522,7 +567,7 @@ namespace myakish::algebraic
     {
         inline constexpr static myakish::Size Count = 0;
 
-        Product() {}      
+        Product() {}
     };
 
 
@@ -532,6 +577,10 @@ namespace myakish::algebraic
 
     template<typename ...Types>
     using Tuple = Product<std::conditional_t<std::is_reference_v<Types>, accessors::Reference<Types>, accessors::Value<Types>>...>;
+
+    struct NullOptionalType {};
+    inline constexpr NullOptionalType NullOptional;
+
 
 
 
