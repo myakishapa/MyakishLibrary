@@ -14,6 +14,7 @@
 #include <MyakishLibrary/Meta.hpp>
 
 #include <MyakishLibrary/Algebraic/Algebraic.hpp>
+#include <MyakishLibrary/Algebraic/Standard.hpp>
 
 
 namespace myakish::binary_serialization_suite
@@ -225,7 +226,7 @@ namespace myakish::binary_serialization_suite
         }
 
         template<streams::InputStream Stream>
-        Type Parse(Stream&& stream)
+        Type Parse(Stream&& stream) const
         {
             Type synthesized{};
             IO(stream, synthesized);
@@ -282,10 +283,10 @@ namespace myakish::binary_serialization_suite
     { 
         using Attribute = algebraic::Variant<ParserAttribute<Parsers>...>;
 
-        algebraic::Tuple<Parsers...> parsers;
+        std::tuple<Parsers...> parsers;
 
         constexpr VariantParser(Parsers... parsers) : parsers(std::move(parsers)...) {}
-        constexpr VariantParser(algebraic::Tuple<Parsers...> parsers) : parsers(std::move(parsers)) {}
+        constexpr VariantParser(std::tuple<Parsers...> parsers) : parsers(std::move(parsers)) {}
 
         template<streams::Stream Stream, typename ArgAttribute>
         void IO(Stream&& out, ArgAttribute&& attribute) const

@@ -346,7 +346,7 @@ int main()
         
         alg::Variant<int, float> val = 20.f;
 
-        auto var = bst::VariantParser(bst::Int, bst::Trivial<float>, bst::Trivial<long double>);
+        constexpr auto var = bst::VariantParser(bst::Int, bst::Trivial<float>, bst::Trivial<long double>);
         auto rule = bst::Engage(hof::Constant(1), std::identity{}) >> var;
         
         using Attribute = decltype(var)::Attribute;

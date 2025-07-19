@@ -18,13 +18,13 @@ namespace myakish::functional::higher_order
     };
     inline constexpr ConstantFunctor Constant;
 
-    auto DecayCompose()
+    constexpr auto DecayCompose()
     {
         return std::identity{};
     }
 
     template<typename First, typename ...Rest>
-    auto DecayCompose(First first, Rest... rest)
+    constexpr auto DecayCompose(First first, Rest... rest)
     {
         return [...rest = std::move(rest), first = std::move(first)]<typename ...Args>(Args&&... args) -> auto
         {
