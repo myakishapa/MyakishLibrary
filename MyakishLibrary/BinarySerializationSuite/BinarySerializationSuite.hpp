@@ -260,7 +260,7 @@ namespace myakish::binary_serialization_suite
 
             using namespace functional::operators;
             
-            parsers | alg::Iterate(Func);
+            parsers | algebraic::Iterate(Func);
         }
 
         template<streams::InputStream Stream>

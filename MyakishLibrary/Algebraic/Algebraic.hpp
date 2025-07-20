@@ -318,6 +318,17 @@ namespace myakish::algebraic
             Create<Index>(std::forward<Args>(args)...);
         }
 
+        template<SumConcept OtherSum>
+        void Create(OtherSum&& rhs)
+        {
+            auto CreateFunc = [&]<myakish::Size Index>(FromIndexType<Index>)
+            {
+                Create(std::forward<OtherSum>(rhs).Get<Index>());
+            };
+
+            VisitByIndex(rhs, CreateFunc);
+        }
+
     public:
 
 
@@ -333,15 +344,18 @@ namespace myakish::algebraic
         template<SumConcept OtherSum>
         Sum(OtherSum&& rhs)
         {
-            auto CreateFunc = [&]<myakish::Size Index>(FromIndexType<Index>)
-            {
-                Create(std::forward<OtherSum>(rhs).Get<Index>());
-            };
-
-            VisitByIndex(rhs, CreateFunc);
+            Create(std::forward<OtherSum>(rhs));
         }
 
-        Sum(const Sum& rhs) = delete;
+        Sum(const Sum& rhs)
+        {
+            Create(rhs);
+        }
+        Sum(Sum&& rhs)
+        {
+            Create(std::move(rhs));
+        }
+
 
         template<typename ...Args>
         Sum(Args&&... args) requires ConvertionDeducible<AccessorList, meta::TypeList<Args&&...>>
@@ -377,6 +391,26 @@ namespace myakish::algebraic
             Destroy();
             Create(std::forward<Args>(args)...);
         }
+
+
+        template<typename Arg>
+        Sum& operator=(Arg&& arg)
+        {
+            Emplace(std::forward<Arg>(arg));
+            return *this;
+        }
+
+        Sum& operator=(const Sum& rhs)
+        {
+            Emplace(rhs);
+            return *this;
+        }
+        Sum& operator=(Sum&& rhs)
+        {
+            Emplace(std::move(rhs));
+            return *this;
+        }
+
 
         template<myakish::Size Index, typename Self> requires (0 <= Index && Index < Count)
             decltype(auto) Get(this Self&& self)
@@ -531,6 +565,17 @@ namespace myakish::algebraic
             Accessor::Create(storage + Offset<Index>, std::forward<Args>(args)...);
         }
 
+        template<ProductConcept OtherProduct>
+        void Create(OtherProduct&& rhs)
+        {
+            auto CreateFunc = [&]<myakish::Size Index>(FromIndexType<Index>)
+            {
+                Create<Index>(std::forward<OtherProduct>(rhs).Get<Index>());
+            };
+
+            IterateByIndex(rhs, CreateFunc);
+        }
+
 
         template<myakish::Size CurrentIndex>
         void MatchCreate()
@@ -557,18 +602,65 @@ namespace myakish::algebraic
             MatchCreate<0>(std::forward<Args>(args)...);
         }
 
-        Product(const Product&) = delete;
-
         template<ProductConcept OtherProduct>
         Product(OtherProduct&& rhs)
         {
-            auto CreateFunc = [&]<myakish::Size Index>(FromIndexType<Index>)
-            {
-                Create<Index>(std::forward<OtherProduct>(rhs).Get<Index>());
-            };
-
-            IterateByIndex(rhs, CreateFunc);
+            Create(std::forward<OtherProduct>(rhs));
         }
+
+        
+        Product(const Product& rhs)
+        {
+            Create(rhs);
+        }
+        Product(Product&& rhs)
+        {
+            Create(std::move(rhs));
+        }
+
+
+        template<myakish::Size Index, typename ...Args>
+        void Emplace(Args&&... args)
+        {
+            Destroy<Index>();
+            Create<Index>(std::forward<Args>(args)...);
+        }
+
+
+        template<typename ...Args>
+        void Emplace(Args&&... args)
+        {
+            DestroyAll();
+            MatchCreate<0>(std::forward<Args>(args)...);
+        }
+
+        template<ProductConcept OtherProduct>
+        void Emplace(OtherProduct&& rhs)
+        {
+            DestroyAll();
+            Create(std::forward<OtherProduct>(rhs));
+        }
+
+
+        template<ProductConcept OtherProduct>
+        Product& operator=(OtherProduct&& rhs)
+        {
+            Emplace(std::forward<OtherProduct>(rhs));
+            return *this;
+        }
+
+        Product& operator=(const Product& rhs)
+        {
+            Emplace(rhs);
+            return *this;
+        }
+        Product& operator=(Product&& rhs)
+        {
+            Emplace(std::move(rhs));
+            return *this;
+        }
+
+
 
         template<myakish::Size Index, typename Self> requires (0 <= Index && Index < Count)
             decltype(auto) Get(this Self&& self)
