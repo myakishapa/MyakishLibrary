@@ -345,10 +345,15 @@ int main()
         auto in = data | st2::ReadFromRange;
         
         alg::Variant<int, float> val = 20.f;
+        alg::Variant<int, float> val2(val);
 
         constexpr auto var = bst::VariantParser(bst::Int, bst::Trivial<float>, bst::Trivial<long double>);
         auto rule = bst::Engage(hof::Constant(1), std::identity{}) >> var;
         
+        using v = decltype(var)::Test;
+
+        constexpr auto sizdfgk = sizeof(var);
+
         using Attribute = decltype(var)::Attribute;
 
         auto cast = std::move(val) | alg::Cast<Attribute>();
@@ -443,6 +448,7 @@ int main()
             float f = 10.f;
 
             alg::Tuple<int, float&> tuple(1, f);
+            alg::Tuple<int, float&> tuple3(tuple);
 
             f = 20.f;
 

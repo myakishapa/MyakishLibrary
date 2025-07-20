@@ -1,8 +1,10 @@
 #pragma once
 
 #include <concepts>
+#include <new>
 
 #include <MyakishLibrary/Core.hpp>
+#include <MyakishLibrary/Meta.hpp>
 
 namespace myakish::algebraic
 {

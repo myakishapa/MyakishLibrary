@@ -341,6 +341,8 @@ namespace myakish::algebraic
             VisitByIndex(rhs, CreateFunc);
         }
 
+        Sum(const Sum& rhs) = delete;
+
         template<typename ...Args>
         Sum(Args&&... args) requires ConvertionDeducible<AccessorList, meta::TypeList<Args&&...>>
         {
@@ -536,6 +538,8 @@ namespace myakish::algebraic
         {
             MatchCreate<0>(std::forward<Args>(args)...);
         }
+
+        Product(const Product&) = delete;
 
         template<ProductConcept OtherProduct>
         Product(OtherProduct&& rhs)

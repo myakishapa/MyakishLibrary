@@ -1,5 +1,6 @@
 #pragma once
 #include <utility>
+#include <new>
 
 #include <MyakishLibrary/Meta.hpp>
 

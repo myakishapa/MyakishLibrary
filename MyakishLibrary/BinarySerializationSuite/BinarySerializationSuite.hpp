@@ -283,9 +283,11 @@ namespace myakish::binary_serialization_suite
     { 
         using Attribute = algebraic::Variant<ParserAttribute<Parsers>...>;
 
-        std::tuple<Parsers...> parsers;
+        using Test = meta::TypeList<Parsers...>;
 
-        constexpr VariantParser(Parsers... parsers) : parsers(std::move(parsers)...) {}
+        std::tuple<const Parsers&...> parsers;
+
+        constexpr VariantParser(const Parsers&... parsers) : parsers(parsers...) {}
         constexpr VariantParser(std::tuple<Parsers...> parsers) : parsers(std::move(parsers)) {}
 
         template<streams::Stream Stream, typename ArgAttribute>
@@ -309,7 +311,6 @@ namespace myakish::binary_serialization_suite
 
     template<MonomorphicParserConcept... Parsers>
     VariantParser(std::tuple<Parsers...> parsers) -> VariantParser<Parsers...>;
-
 
     /*template<MonomorphicParserConcept First, MonomorphicParserConcept Second>
     constexpr auto operator|(First f, Second s)
@@ -341,8 +342,12 @@ namespace myakish::binary_serialization_suite
         template<streams::InputStream Stream, std::ranges::range AttributeRange>
         void IO(Stream&&, myakish::Size count, AttributeRange& attribute) const
         {
-            std::ranges::range_value_t<std::remove_cvref_t<AttributeRange>> defaultValue{};
-            attribute = std::views::repeat(defaultValue, count) | std::ranges::to<std::remove_cvref_t<AttributeRange>>();
+            auto CreateDefault = [](auto)
+                {
+                    return std::ranges::range_value_t<std::remove_cvref_t<AttributeRange>>{};
+                };
+
+            attribute = std::views::iota(0, count) | std::views::transform(CreateDefault) | std::ranges::to<std::remove_cvref_t<AttributeRange>>();
         }
 
         template<streams::OutputStream Stream, std::ranges::range AttributeRange>
