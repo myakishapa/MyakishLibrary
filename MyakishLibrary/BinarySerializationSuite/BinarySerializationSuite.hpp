@@ -245,15 +245,15 @@ namespace myakish::binary_serialization_suite
     {
         using Attribute = Type;
 
-        std::tuple<const Parsers&...> parsers;
+        std::tuple<Parsers...> parsers;
 
-        constexpr SequenceRuleParser(const Parsers&... parsers) : parsers(parsers...) {}
+        constexpr SequenceRuleParser(Parsers... parsers) : parsers(std::move(parsers)...) {}
 
 
         template<streams::Stream Stream, typename ArgAttribute>
         void IO(Stream&& stream, ArgAttribute&& attribute) const
         {
-            auto Func = [](auto& parser)
+            auto Func = [&](auto& parser)
                 {
                     parser.IO(stream, attribute);
                 };
@@ -274,9 +274,9 @@ namespace myakish::binary_serialization_suite
 
 
     template<typename Type, ParserConcept ...Parsers>
-    constexpr auto SequenceRule(const Parsers&... parsers)
+    constexpr auto SequenceRule(Parsers... parsers)
     {
-        return SequenceRuleParser<Type, Parsers...>(parsers...);
+        return SequenceRuleParser<Type, Parsers...>(std::move(parsers)...);
     }
 
 
