@@ -439,6 +439,24 @@ namespace myakish::algebraic
     };
     inline constexpr IterateByIndexFunctor IterateByIndex;
 
+    struct IterateFunctor : functional::ExtensionMethod
+    {
+        template<ProductConcept Type, typename Function>
+        decltype(auto) ExtensionInvoke(Type&& product, Function&& function) const
+        {
+            auto Func = [&]<Size Index>(FromIndexType<Index>)
+            {
+                std::invoke(std::forward<Function>(function), Get<Index>(std::forward<Type>(product)));
+            };
+
+            IterateByIndex(std::forward<Type>(product), Func);
+
+            return std::forward<Function>(function);
+        }
+
+    };
+    inline constexpr IterateFunctor Iterate;
+
 
     template<AccessorConcept... Accessors>
     struct Product : AlgebraicTag

@@ -502,6 +502,15 @@ int main()
             
             std::println();
         }
+
+        {
+            alg::Variant<int, std::string> var("string apa pes");
+
+            auto&& ref = var.Get<1>();
+            auto copy = var.Get<1>();
+
+            std::println();
+        }
     }
 }
 

@@ -240,6 +240,45 @@ namespace myakish::binary_serialization_suite
         return RuleParser<Type, Parser>(std::move(parser));
     }
 
+    template<typename Type, ParserConcept ...Parsers>
+    struct SequenceRuleParser : ParserBase
+    {
+        using Attribute = Type;
+
+        std::tuple<const Parsers&...> parsers;
+
+        constexpr SequenceRuleParser(const Parsers&... parsers) : parsers(parsers...) {}
+
+
+        template<streams::Stream Stream, typename ArgAttribute>
+        void IO(Stream&& stream, ArgAttribute&& attribute) const
+        {
+            auto Func = [](auto& parser)
+                {
+                    parser.IO(stream, attribute);
+                };
+
+            using namespace functional::operators;
+            
+            parsers | alg::Iterate(Func);
+        }
+
+        template<streams::InputStream Stream>
+        Type Parse(Stream&& stream) const
+        {
+            Type synthesized{};
+            IO(stream, synthesized);
+            return synthesized;
+        }
+    };
+
+
+    template<typename Type, ParserConcept ...Parsers>
+    constexpr auto SequenceRule(const Parsers&... parsers)
+    {
+        return SequenceRuleParser<Type, Parsers...>(parsers...);
+    }
+
 
 
     template<myakish::Size Bytes>
@@ -347,7 +386,8 @@ namespace myakish::binary_serialization_suite
                     return std::ranges::range_value_t<std::remove_cvref_t<AttributeRange>>{};
                 };
 
-            attribute = std::views::iota(0, count) | std::views::transform(CreateDefault) | std::ranges::to<std::remove_cvref_t<AttributeRange>>();
+            //attribute = std::views::iota(0, count) | std::views::transform(CreateDefault) | std::ranges::to<std::remove_cvref_t<AttributeRange>>();
+            attribute.resize(count);
         }
 
         template<streams::OutputStream Stream, std::ranges::range AttributeRange>
