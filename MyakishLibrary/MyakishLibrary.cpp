@@ -512,6 +512,18 @@ int main()
             std::println();
         }
     }
+
+    {
+        using List = meta::TypeList<int, float>;
+
+        auto Func = []<typename Type>(meta::TypeValueType<Type>)
+            {
+                if (std::integral<Type>) std::println("int");
+                else std::println("not int");
+            };
+
+        meta::ForEach<List>(Func);
+    }
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

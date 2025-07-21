@@ -5,6 +5,8 @@
 
 #include <MyakishLibrary/Core.hpp>
 
+#include <MyakishLibrary/Functional/ExtensionMethod.hpp>
+
 namespace myakish::meta
 {
     struct UndefinedResult {};
@@ -70,6 +72,12 @@ namespace myakish::meta
     template<auto... Values>
     struct AsTypes : ReturnType<TypeList<ValueType<Values>...>> {};
 
+
+    template<typename Type>
+    struct TypeValueType : ReturnType<Type> {};
+    template<typename Type>
+    inline constexpr TypeValueType<Type> TypeValue;
+    
 
     namespace detail
     {
@@ -339,4 +347,20 @@ namespace myakish::meta
     template<typename Type>
     concept EnumConcept = std::is_scoped_enum_v<Type>;
 
+
+    template<typename NonList>
+    struct ForEachFunctor {};
+
+    template<typename ...Args>
+    struct ForEachFunctor<TypeList<Args...>> : functional::ExtensionMethod
+    {
+        template<typename Function>
+        constexpr Function&& ExtensionInvoke(Function&& func) const
+        {
+            ((std::invoke(std::forward<Function>(func), TypeValue<Args>)), ...);
+            return std::forward<Function>(func);
+        }
+    };
+    template<typename List>
+    inline constexpr ForEachFunctor<List> ForEach;
 }
