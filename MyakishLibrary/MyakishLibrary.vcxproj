@@ -163,6 +163,7 @@
     <ClInclude Include="Math\Common.hpp" />
     <ClInclude Include="Meta.hpp" />
     <ClInclude Include="Ranges\Bit.hpp" />
+    <ClInclude Include="Ranges\Utility.hpp" />
     <ClInclude Include="Streams\Common.hpp" />
     <ClInclude Include="Streams\Concepts.hpp" />
     <ClInclude Include="Utility.hpp" />

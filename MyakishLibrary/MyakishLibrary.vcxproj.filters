@@ -146,5 +146,8 @@
     <ClInclude Include="Algebraic\Standard.hpp">
       <Filter>Header Files\Algebraic</Filter>
     </ClInclude>
+    <ClInclude Include="Ranges\Utility.hpp">
+      <Filter>Header Files\Ranges</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
