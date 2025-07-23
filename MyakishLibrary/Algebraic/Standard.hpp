@@ -34,19 +34,20 @@ namespace myakish::algebraic
     }
 
 
+    template<meta::InstanceOfConcept<std::optional> Optional>
+    inline constexpr bool EnableAlgebraicFor<Optional> = true;
 
     template<Size Index, meta::InstanceOfConcept<std::optional> Optional>
-    decltype(auto) GetADL(Optional&& optional)
+    decltype(auto) GetADL(Optional&& optional) requires (0 <= Index && Index <= 1)
     {
-        if constexpr (Index == 0) return std::forward<Optional>(optional).value();
+        if constexpr (Index == 1) return std::forward<Optional>(optional).value();
         else return std::nullopt;
     }
-
 
     template<typename ForceDependentName, meta::InstanceOfConcept<std::optional> Optional>
     Size IndexADL(Optional&& optional)
     {
-        return optional.has_value();
+        return static_cast<Size>(optional.has_value());
     }
 
 }

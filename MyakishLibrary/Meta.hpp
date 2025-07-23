@@ -29,6 +29,13 @@ namespace myakish::meta
     struct TypeList {};
 
 
+    template<typename InstantiatedFunction>
+    struct Defined : ReturnValue<!std::same_as<typename InstantiatedFunction::type, UndefinedResult>> {};
+
+    template<typename InstantiatedFunction>
+    concept DefinedConcept = Defined<InstantiatedFunction>::value;
+
+
     template<typename NonList>
     struct Length : Undefined {};
 
