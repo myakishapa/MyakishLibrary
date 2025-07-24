@@ -43,6 +43,25 @@ namespace myakish::functional::higher_order
     inline constexpr DecayThenFunctor DecayThen;
 
 
+    struct MakeCopyFunctor : ExtensionMethod
+    {
+        template<typename Arg>
+        constexpr auto ExtensionInvoke(Arg&& arg) const
+        {
+            return std::forward<Arg>(arg);
+        }
+    };
+    inline constexpr MakeCopyFunctor MakeCopy;
 
-
+    template<typename Type>
+    struct StaticCastFunctor : ExtensionMethod
+    {
+        template<typename Arg>
+        constexpr auto ExtensionInvoke(Arg&& arg) const
+        {
+            return static_cast<Type>(std::forward<Arg>(arg));
+        }
+    };
+    template<typename Type>
+    inline constexpr StaticCastFunctor<Type> StaticCast;
 }

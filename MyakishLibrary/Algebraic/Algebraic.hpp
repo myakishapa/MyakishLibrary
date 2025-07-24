@@ -259,7 +259,6 @@ namespace myakish::algebraic
 
             return Visit(std::forward<Type>(sum), Func);
         }
-
     };
     template<typename Alternative, template<typename, typename> typename Comparator = meta::SameBase>
     inline constexpr GetByTypeFunctor<Alternative, Comparator> GetByType;
