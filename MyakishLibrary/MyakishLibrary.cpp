@@ -14,7 +14,6 @@
 #include <MyakishLibrary/Streams/Concepts.hpp>
 #include <MyakishLibrary/Streams/Common.hpp>
 
-#include <MyakishLibrary/Functional/Pipeline.hpp>
 #include <MyakishLibrary/Functional/HigherOrder.hpp>
 
 #include <MyakishLibrary/Utility.hpp>
@@ -44,7 +43,6 @@ namespace meta = myakish::meta;
 namespace hof = myakish::functional::higher_order;
 namespace alg = myakish::algebraic;
 
-using namespace myakish::functional::operators;
 using namespace hv::literals;
 using namespace std::literals;
 
@@ -80,7 +78,7 @@ int main()
         //auto out = st2::ContiguousStream(data.data(), data.data() + data.size());
         auto out = data | st2::WriteToRange;
 
-        out | st2::Write(1337);
+        out | st2::Write[1337];
         st2::Write(out, 228);
 
         auto in = data | st2::ReadFromRange | st2::Polymorphize;
@@ -118,9 +116,9 @@ int main()
         auto in = std::views::iota(0) | st2::ReadFromRange;  
         auto out = st2::FileOutputStream("test.bin");
         
-        auto test = st2::Copy(out, 32);
+        auto test = st2::Copy[out, 32];
 
-        in | st2::Copy(out, 32);
+        in | st2::Copy[out, 32];
     }
 
     {
@@ -241,7 +239,7 @@ int main()
                 
         //auto test = hv::array::Range(0i64, 20i64)(tree);
         
-        for (auto [index, desc] : tree | hv::array::Range(0i64, 20i64) | std::views::enumerate)
+        for (auto [index, desc] : tree | hv::array::Range[0i64, 20i64] | std::views::enumerate)
         {
             desc = int(index);
         }
@@ -275,7 +273,7 @@ int main()
         auto out = data | st2::WriteToRange;
         auto in = data | st2::ReadFromRange;
 
-        out | st2::Write(1337);
+        out | st2::Write[1337];
 
         auto rule = bst::Int;
 
@@ -326,11 +324,11 @@ int main()
 
         auto zipWith3 = [](auto arg) { return std::tuple(arg, 3); };
 
-        auto result = var | Multitransform(intToStr, floatToInt, transformLong) | Transform(zipWith3);
+        auto result = var | Multitransform[intToStr, floatToInt, transformLong] | Transform[zipWith3];
 
         auto tuple = std::tuple(1, 2.f, "sfd"s);
 
-        auto result2 = std::move(tuple) | Select(2);
+        auto result2 = std::move(tuple) | Select[2];
 
         auto synth = Synthesize<alg::Variant<int, double, std::string>>(2);
 
@@ -356,13 +354,13 @@ int main()
 
         using Attribute = decltype(var)::Attribute;
 
-        auto cast = std::move(val) | alg::Cast<Attribute>();
+        auto cast = std::move(val) | alg::Cast<Attribute>;
 
         auto test = std::invoke(hof::Constant(1), var);
 
         //rule.IO(out | st2::WriteOnly, val);
 
-        out | st2::Write(10.f);
+        out | st2::Write[10.f];
 
         rule.IO(in, val);
 
@@ -374,7 +372,7 @@ int main()
         auto func1 = [](int i) -> float { return i * 2.f; };
         auto func2 = [](float f) -> double { return f * 2.0; };
 
-        auto comp = func1 | hof::DecayThen(std::identity{}) | hof::DecayThen(func2);
+        auto comp = func1 | hof::DecayCompose[std::identity{}] | hof::DecayCompose[func2];
 
         auto val = comp(2);
 
@@ -435,7 +433,7 @@ int main()
 
             sum.Emplace<1>(1);
 
-            sum | alg::Visit(test);
+            sum | alg::Visit[test];
 
             sum.Emplace<0>(f2);
 
@@ -454,9 +452,9 @@ int main()
 
             alg::Tuple<float, const float&> tuple2(tuple);
 
-            auto first = tuple | alg::Select(1);
+            auto first = tuple | alg::Select[1];
 
-            first | alg::Visit(test);
+            first | alg::Visit[test];
 
             std::println("{} {}", tuple2.Get<0>(), tuple2.Get<1>());
         }
@@ -473,9 +471,9 @@ int main()
 
             auto zipWith3 = [](auto arg) { return std::tuple(arg, 3); };
 
-            auto result = var | alg::Multitransform(intToStr, floatToInt, transformLong) | alg::Transform(zipWith3);
+            auto result = var | alg::Multitransform[intToStr, floatToInt, transformLong] | alg::Transform[zipWith3];
 
-            result | alg::Visit(test);
+            result | alg::Visit[test];
         }
 
         {

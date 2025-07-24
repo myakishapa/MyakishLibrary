@@ -6,7 +6,6 @@
 
 #include <MyakishLibrary/Math/Common.hpp>
 #include <MyakishLibrary/Core.hpp>
-#include <MyakishLibrary/Functional/Pipeline.hpp>
 
 namespace myakish::ranges
 {

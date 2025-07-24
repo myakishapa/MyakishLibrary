@@ -5,8 +5,6 @@
 #include <MyakishLibrary/Streams/Common.hpp>
 #include <MyakishLibrary/Streams/Concepts.hpp>
 
-#include <MyakishLibrary/Functional/Pipeline.hpp>
-
 #include <memory>
 #include <map>
 #include <string_view>
@@ -297,7 +295,7 @@ namespace myakish::tree
         struct AcquireFunction : functional::ExtensionMethod
         {
             template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle, typename ...Args>
-            decltype(auto) ExtensionInvoke(const Descriptor<StorageType, Handle>& desc, Args&&... args) const
+            decltype(auto) operator()(const Descriptor<StorageType, Handle>& desc, Args&&... args) const
             {
                 return desc.Acquire<Type>(std::forward<Args>(args)...);
             }

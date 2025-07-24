@@ -2,30 +2,10 @@
 #include <concepts>
 #include <tuple>
 
-#include <MyakishLibrary/Functional/Pipeline.hpp>
+#include <MyakishLibrary/Meta.hpp>
 
 namespace myakish::functional
 {
-    struct DisallowDirectInvoke {};
-    struct RightCurry {};
-
-    namespace detail
-    {
-        template<typename Type>
-        concept RightCurried = std::derived_from<std::remove_cvref_t<Type>, RightCurry>;
-
-        template<typename Callable, typename ...Args>
-        concept ExtensionInvocable = requires(Callable && object, Args&&... args)
-        {
-            std::forward<Callable>(object).ExtensionInvoke(std::forward<Args>(args)...);
-        };
-
-        template<typename Callable, typename ...Args>
-        concept DirectExtensionInvocable = !std::derived_from<std::remove_cvref_t<Callable>, DisallowDirectInvoke> && ExtensionInvocable<Callable, Args...>;
-
-    }
-
-
     struct ExtensionMethod
     {
         template<typename Callable, typename ...CurryArgs>
@@ -45,44 +25,56 @@ namespace myakish::functional
 
         private:
 
-
-            template<typename ...Args, std::size_t ...Indices>
+            template<typename ...Args, std::size_t ...Indices> requires std::invocable<Callable&&, Args&&..., CurryArgs&&...>
             decltype(auto) Dispatch(std::index_sequence<Indices...> seq, Args&&... args) const
             {
-                if constexpr (detail::RightCurried<Callable>) return RightInvoke(seq, std::forward<Args>(args)...);
-                else return                                           LeftInvoke(seq, std::forward<Args>(args)...);
-            }
-
-            template<typename ...Args, std::size_t ...Indices> requires detail::ExtensionInvocable<Callable, Args..., CurryArgs...>
-            decltype(auto) LeftInvoke(std::index_sequence<Indices...>, Args&&... args) const
-            {
-                return std::forward<Callable>(baseCallable).ExtensionInvoke(std::forward<Args>(args)..., std::forward<CurryArgs>(std::get<Indices>(curryArgs))...);
-            }
-
-            template<typename ...Args, std::size_t ...Indices> requires detail::ExtensionInvocable<Callable, CurryArgs..., Args...>
-            decltype(auto) RightInvoke(std::index_sequence<Indices...>, Args&&... args) const
-            {
-                return std::forward<Callable>(baseCallable).ExtensionInvoke(std::forward<CurryArgs>(std::get<Indices>(curryArgs))..., std::forward<Args>(args)...);
+                return std::invoke(std::forward<Callable>(baseCallable), std::forward<Args>(args)..., std::forward<CurryArgs>(std::get<Indices>(curryArgs))...);
             }
         };
 
         template<typename Self, typename ...Args>
-        decltype(auto) operator()(this Self&& self, Args&&... args)
+        auto operator[](this Self&& self, Args&&... args)
         {
             return ExtensionClosure<Self, Args...>(std::forward<Self>(self), std::forward<Args>(args)...);
         }
 
-        template<typename Self, typename ...Args> requires detail::DirectExtensionInvocable<Self&&, Args&&...>
-        decltype(auto) operator()(this Self&& self, Args&&... args)
+
+        template<typename Invocable>
+        struct PartialApplier
         {
-            return std::forward<Self>(self).ExtensionInvoke(std::forward<Args>(args)...);
+            Invocable&& invocable;
+
+            PartialApplier(Invocable&& invocable) : invocable(std::forward<Invocable>(invocable)) {}
+
+            template<typename ...Args>
+            auto operator()(Args&&... args) const
+            {
+                return std::forward<Invocable>(invocable)[std::forward<Args>(args)...];
+            }
+        };
+
+        template<typename Self>
+        auto operator*(this Self&& self)
+        {
+            return PartialApplier<Self>(std::forward<Self>(self));
         }
     };
 
-    template<std::derived_from<ExtensionMethod> ExtensionType>
-    inline constexpr bool EnablePipelineFor<ExtensionType> = true;
+    template<typename Arg, typename Extension> requires std::derived_from<std::remove_cvref_t<Extension>, ExtensionMethod>
+    decltype(auto) operator|(Arg&& arg, Extension&& ext)
+    {
+        return std::forward<Extension>(ext)(std::forward<Arg>(arg));
+    }
 
-    template<typename Callable, typename ...Args>
-    inline constexpr bool EnablePipelineFor<ExtensionMethod::ExtensionClosure<Callable, Args...>> = true;
+    template<typename Arg, meta::InstanceOfConcept<ExtensionMethod::ExtensionClosure> Extension>
+    decltype(auto) operator|(Arg&& arg, Extension&& ext)
+    {
+        return std::forward<Extension>(ext)(std::forward<Arg>(arg));
+    }
 
+    template<typename Arg, meta::InstanceOfConcept<ExtensionMethod::PartialApplier> PartialApplier>
+    decltype(auto) operator|(Arg&& arg, PartialApplier&& applier)
+    {
+        return std::forward<PartialApplier>(applier)(std::forward<Arg>(arg));
+    }
 }

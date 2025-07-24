@@ -5,8 +5,6 @@
 
 #include <MyakishLibrary/Core.hpp>
 
-#include <MyakishLibrary/Functional/ExtensionMethod.hpp>
-
 namespace myakish::meta
 {
     struct UndefinedResult {};
@@ -359,10 +357,10 @@ namespace myakish::meta
     struct ForEachFunctor {};
 
     template<typename ...Args>
-    struct ForEachFunctor<TypeList<Args...>> : functional::ExtensionMethod
+    struct ForEachFunctor<TypeList<Args...>>
     {
         template<typename Function>
-        constexpr Function&& ExtensionInvoke(Function&& func) const
+        constexpr Function&& operator()(Function&& func) const
         {
             ((std::invoke(std::forward<Function>(func), TypeValue<Args>)), ...);
             return std::forward<Function>(func);

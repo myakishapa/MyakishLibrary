@@ -77,9 +77,6 @@
     <ClInclude Include="Enum\BitwiseOperators.hpp">
       <Filter>Header Files\Enum</Filter>
     </ClInclude>
-    <ClInclude Include="Functional\Pipeline.hpp">
-      <Filter>Header Files\Functional</Filter>
-    </ClInclude>
     <ClInclude Include="Utility.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
