@@ -1,7 +1,6 @@
 #pragma once
 #include <MyakishLibrary/HvTree/HvTree.hpp>
 
-#include <MyakishLibrary/Functional/Pipeline.hpp>
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 
 #include <ranges>
@@ -25,7 +24,7 @@ namespace myakish::tree::array
         template<typename Family>
         struct MakeArrayIndexerFunctor : functional::ExtensionMethod
         {
-            auto ExtensionInvoke(Size index) const
+            auto operator()(Size index) const
             {
                 return ArrayIndex(Family{}, index);
             }
@@ -42,7 +41,7 @@ namespace myakish::tree::array
         struct InfiniteFunctor : functional::ExtensionMethod
         {
             template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle>
-            auto ExtensionInvoke(const Descriptor<StorageType, Handle>& descriptor) const
+            auto operator()(const Descriptor<StorageType, Handle>& descriptor) const
             {
                 return Indices<typename StorageType::HandleFamily>
                     | std::views::transform([=](auto index) { return descriptor[index]; });
@@ -56,7 +55,7 @@ namespace myakish::tree::array
         struct RangeFunctor : functional::ExtensionMethod
         {
             template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle>
-            auto ExtensionInvoke(const Descriptor<StorageType, Handle>& descriptor, Size begin, Size count = std::numeric_limits<Size>::max()) const
+            auto operator()(const Descriptor<StorageType, Handle>& descriptor, Size begin, Size count = std::numeric_limits<Size>::max()) const
             {
                 return Infinite(descriptor) | std::views::drop(begin) | std::views::take(count);
             }
@@ -69,7 +68,7 @@ namespace myakish::tree::array
         struct ExistingFunctor : functional::ExtensionMethod
         {
             template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle>
-            auto ExtensionInvoke(const Descriptor<StorageType, Handle>& descriptor) const
+            auto operator()(const Descriptor<StorageType, Handle>& descriptor) const
             {
                 return Infinite(descriptor)
                     | std::views::take_while([](auto desc) { return desc.Exists(); });

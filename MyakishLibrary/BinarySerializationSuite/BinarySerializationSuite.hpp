@@ -8,7 +8,6 @@
 
 #include <MyakishLibrary/Streams/Common.hpp>
 
-#include <MyakishLibrary/Functional/Pipeline.hpp>
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 
 #include <MyakishLibrary/Meta.hpp>
@@ -91,16 +90,12 @@ namespace myakish::binary_serialization_suite
 
         void IO(streams::InputStream auto&& in, AttributeLike<Type> auto&& value) const
         {
-            using namespace myakish::functional::operators;
-
             value = in | streams::Read<Type>;
         }
 
         void IO(streams::OutputStream auto&& out, AttributeLike<Type> auto&& value) const
         {
-            using namespace myakish::functional::operators;
-
-            out | streams::WriteAs<Type>(value);
+            out | streams::WriteAs<Type>[value];
         }
     };
 
@@ -201,9 +196,7 @@ namespace myakish::binary_serialization_suite
 
         void IO(streams::AlignableStream auto&& stream, auto&&) const
         {
-            using namespace myakish::functional::operators;
-
-            stream | streams::Align(alignment);
+            stream | streams::Align[alignment];
         }
     };
 
@@ -257,10 +250,8 @@ namespace myakish::binary_serialization_suite
                 {
                     parser.IO(stream, attribute);
                 };
-
-            using namespace functional::operators;
             
-            parsers | algebraic::Iterate(Func);
+            parsers | algebraic::Iterate[Func];
         }
 
         template<streams::InputStream Stream>
@@ -302,10 +293,7 @@ namespace myakish::binary_serialization_suite
     {
         template<streams::InputStream Stream, typename Variant>
         void IO(Stream&&, myakish::Size index, Variant&& variant) const
-        {
-            //using namespace functional::algebraic;
-            using namespace functional::operators;
-            
+        {       
             variant = algebraic::Synthesize<std::remove_cvref_t<Variant>>(index);
         }
 
@@ -332,9 +320,6 @@ namespace myakish::binary_serialization_suite
         template<streams::Stream Stream, typename ArgAttribute>
         void IO(Stream&& out, ArgAttribute&& attribute) const
         {
-            //using namespace functional::algebraic;
-            using namespace functional::operators;
-
             auto ParseWith = [&](auto&& parser)
                 {
                     return [&](auto&& attribute)
@@ -344,7 +329,7 @@ namespace myakish::binary_serialization_suite
                         };
                 };
 
-            attribute = std::forward<ArgAttribute>(attribute) | algebraic::Cast<Attribute>() | algebraic::Apply(parsers | algebraic::Transform(ParseWith), algebraic::Multitransform) | algebraic::Cast<std::remove_cvref_t<ArgAttribute>>();
+            attribute = std::forward<ArgAttribute>(attribute) | algebraic::Cast<Attribute> | algebraic::Apply(parsers | algebraic::Transform[ParseWith], *algebraic::Multitransform) | algebraic::Cast<std::remove_cvref_t<ArgAttribute>>;
         }
     };
 

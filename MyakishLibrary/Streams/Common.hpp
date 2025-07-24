@@ -10,7 +10,6 @@
 
 #include <MyakishLibrary/Utility.hpp>
 
-#include <MyakishLibrary/Functional/Pipeline.hpp>
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 
 namespace fs = std::filesystem;
@@ -150,12 +149,12 @@ namespace myakish::streams
 
     struct Aligner : functional::ExtensionMethod
     {
-        auto ExtensionInvoke(Stream auto stream) const
+        auto operator()(Stream auto stream) const
         {
             return AlignableWrapper(std::move(stream));
         }
 
-        auto ExtensionInvoke(AlignableStream auto alignable) const
+        auto operator()(AlignableStream auto alignable) const
         {
             return std::move(alignable);
         }
@@ -212,7 +211,7 @@ namespace myakish::streams
 
     struct WriteOnlyFunctor : functional::ExtensionMethod
     {
-        auto ExtensionInvoke(OutputStream auto stream) const
+        auto operator()(OutputStream auto stream) const
         {
             return WriteOnlyWrapper(std::move(stream));
         }
@@ -304,7 +303,7 @@ namespace myakish::streams
     
     struct CopyFunctor : functional::ExtensionMethod
     {
-        constexpr void ExtensionInvoke(InputStream auto&& in, OutputStream auto&& out, Size bytes) const
+        constexpr void operator()(InputStream auto&& in, OutputStream auto&& out, Size bytes) const
         {
             std::vector<std::byte> buffer(bytes);
             in.Read(buffer.data(), bytes);
@@ -315,12 +314,12 @@ namespace myakish::streams
 
     struct WriteFunctor : functional::ExtensionMethod
     {
-        constexpr void ExtensionInvoke(OutputStream auto&& out, myakish::meta::TriviallyCopyableConcept auto value) const
+        constexpr void operator()(OutputStream auto&& out, myakish::meta::TriviallyCopyableConcept auto value) const
         {
             out.Write(reinterpret_cast<const std::byte*>(&value), sizeof(value));
         }
 
-        constexpr void ExtensionInvoke(OutputStream auto&& out, std::string_view str) const
+        constexpr void operator()(OutputStream auto&& out, std::string_view str) const
         {
             out.Write(reinterpret_cast<const std::byte*>(str.data()), str.size());
         }
@@ -330,12 +329,12 @@ namespace myakish::streams
     template<myakish::meta::TriviallyCopyableConcept Type>
     struct WriteAsFunctor : functional::ExtensionMethod
     {
-        constexpr void ExtensionInvoke(OutputStream auto&& out, Type value) const
+        constexpr void operator()(OutputStream auto&& out, Type value) const
         {
             out.Write(reinterpret_cast<const std::byte*>(&value), sizeof(value));
         }
 
-        constexpr void ExtensionInvoke(OutputStream auto&& out, std::string_view str) const requires std::same_as<Type, std::string_view>
+        constexpr void operator()(OutputStream auto&& out, std::string_view str) const requires std::same_as<Type, std::string_view>
         {
             out.Write(reinterpret_cast<const std::byte*>(str.data()), str.size());
         }
@@ -346,7 +345,7 @@ namespace myakish::streams
     template<myakish::meta::TriviallyCopyableConcept Type>
     struct ReadFunctor : functional::ExtensionMethod
     {
-        constexpr Type ExtensionInvoke(InputStream auto&& in) const
+        constexpr Type operator()(InputStream auto&& in) const
         {
             Type result;
             in.Read(reinterpret_cast<std::byte*>(&result), sizeof(result));
@@ -358,7 +357,7 @@ namespace myakish::streams
 
     struct AlignFunctor : functional::ExtensionMethod
     {
-        constexpr void ExtensionInvoke(AlignableStream auto&& stream, Size alignment) const
+        constexpr void operator()(AlignableStream auto&& stream, Size alignment) const
         {
             stream.Seek(Padding(stream.Offset(), alignment));
         }
@@ -439,7 +438,7 @@ namespace myakish::streams
 
     struct Polymorphizer : functional::ExtensionMethod
     {
-        auto ExtensionInvoke(Stream auto &&stream) const
+        auto operator()(Stream auto &&stream) const
         {
             return PolymorphicStream(std::forward<decltype(stream)>(stream));
         }
@@ -575,7 +574,7 @@ namespace myakish::streams
     struct ReadFromRangeFunctor : functional::ExtensionMethod
     {
         template<std::ranges::contiguous_range Range>
-        auto ExtensionInvoke(Range&& r) const
+        auto operator()(Range&& r) const
         {
             auto data = AsBytePtr(std::ranges::data(r));
             auto size = std::ranges::size(r) * sizeof(std::ranges::range_value_t<Range>);
@@ -584,7 +583,7 @@ namespace myakish::streams
         }
 
         template<std::ranges::input_range Range>
-        auto ExtensionInvoke(Range&& r) const
+        auto operator()(Range&& r) const
         {
             return RangeInputStream(std::forward<Range>(r));
         }
@@ -594,7 +593,7 @@ namespace myakish::streams
     struct WriteToRangeFunctor : functional::ExtensionMethod
     {
         template<std::ranges::contiguous_range Range>
-        auto ExtensionInvoke(Range&& r) const
+        auto operator()(Range&& r) const
         {
             auto data = AsBytePtr(std::ranges::data(r));
             auto size = std::ranges::size(r) * sizeof(std::ranges::range_value_t<Range>);
@@ -603,7 +602,7 @@ namespace myakish::streams
         }
 
         template<std::ranges::range Range>
-        auto ExtensionInvoke(Range&& r) const
+        auto operator()(Range&& r) const
         {
             return RangeOutputStream(std::forward<Range>(r));
         }

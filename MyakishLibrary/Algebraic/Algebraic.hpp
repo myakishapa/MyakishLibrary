@@ -66,7 +66,7 @@ namespace myakish::algebraic
     struct GetFunctor : functional::ExtensionMethod
     {
         template<AlgebraicConcept Algebraic> requires(detail::get::ChooseStrategy<Algebraic&&, Index>() != detail::get::Strategy::None)
-            decltype(auto) ExtensionInvoke(Algebraic&& algebraic) const
+            decltype(auto) operator()(Algebraic&& algebraic) const
         {
             constexpr auto Strategy = detail::get::ChooseStrategy<Algebraic&&, Index>();
 
@@ -84,13 +84,13 @@ namespace myakish::algebraic
     template<typename Type, Size Index>
     concept HasUnderlying = AlgebraicConcept<Type> && requires(Type && algebraic)
     {
-        Get<Index>.ExtensionInvoke(std::forward<Type>(algebraic));
+        Get<Index>(std::forward<Type>(algebraic));
     };
 
     template<AlgebraicConcept Type, Size Index> requires HasUnderlying<Type, Index>
     struct ValueType
     {
-        using type = decltype(Get<Index>.ExtensionInvoke(std::declval<Type>()));
+        using type = decltype(Get<Index>(std::declval<Type>()));
     };
 
 
@@ -153,7 +153,7 @@ namespace myakish::algebraic
     struct IndexFunctor : functional::ExtensionMethod
     {
         template<AlgebraicConcept Sum> requires(detail::index::ChooseStrategy<Sum&&>() != detail::index::Strategy::None)
-            auto ExtensionInvoke(Sum&& sum) const
+            auto operator()(Sum&& sum) const
         {
             constexpr auto Strategy = detail::index::ChooseStrategy<Sum&&>();
 
@@ -169,7 +169,7 @@ namespace myakish::algebraic
     template<typename Type>
     concept SumConcept = AlgebraicConcept<Type> && requires(Type && type)
     {
-        { Index.ExtensionInvoke(std::forward<Type>(type)) } -> std::integral;
+        { Index(std::forward<Type>(type)) } -> std::integral;
 
         // algebraic.Emplace<Index>(args...)
     };
@@ -196,13 +196,13 @@ namespace myakish::algebraic
     struct VisitByIndexFunctor : functional::ExtensionMethod
     {
         template<SumConcept Type, typename Function>
-        decltype(auto) ExtensionInvoke(Type&& sum, Function&& function) const
+        decltype(auto) operator()(Type&& sum, Function&& function) const
         {
-            return ExtensionInvoke(Index(std::forward<Type>(sum)), FromIndex<Count<Type&&>>, std::forward<Function>(function));
+            return operator()(Index(std::forward<Type>(sum)), FromIndex<Count<Type&&>>, std::forward<Function>(function));
         }
 
         template<Size LastIndex, typename Function>
-        decltype(auto) ExtensionInvoke(Size index, FromIndexType<LastIndex>, Function&& function) const
+        decltype(auto) operator()(Size index, FromIndexType<LastIndex>, Function&& function) const
         {
             return detail::Visit<0, LastIndex>(index, std::forward<Function>(function));
 
@@ -213,7 +213,7 @@ namespace myakish::algebraic
     struct VisitFunctor : functional::ExtensionMethod
     {
         template<SumConcept Type, typename Function>
-        decltype(auto) ExtensionInvoke(Type&& sum, Function&& function) const
+        decltype(auto) operator()(Type&& sum, Function&& function) const
         {
             auto Func = [&]<Size Index>(FromIndexType<Index>) -> decltype(auto)
             {
@@ -230,7 +230,7 @@ namespace myakish::algebraic
     struct HoldsAlternativeFunctor : functional::ExtensionMethod
     {
         template<SumConcept Type>
-        bool ExtensionInvoke(Type&& sum) const
+        bool operator()(Type&& sum) const
         {
             auto Func = [&]<typename Arg>(Arg&&) -> bool
             {
@@ -249,7 +249,7 @@ namespace myakish::algebraic
     struct GetByTypeFunctor : functional::ExtensionMethod
     {
         template<SumConcept Type>
-        Alternative ExtensionInvoke(Type&& sum) const
+        Alternative operator()(Type&& sum) const
         {
             auto Func = [&]<typename Arg>(Arg&& arg) -> Alternative
             {
@@ -458,13 +458,13 @@ namespace myakish::algebraic
     struct IterateByIndexFunctor : functional::ExtensionMethod
     {
         template<ProductConcept Type, typename Function>
-        Function&& ExtensionInvoke(Type&&, Function&& function) const
+        Function&& operator()(Type&&, Function&& function) const
         {
-            return ExtensionInvoke(FromIndex<Count<Type&&>>, std::forward<Function>(function));
+            return operator()(FromIndex<Count<Type&&>>, std::forward<Function>(function));
         }
 
         template<Size LastIndex, typename Function>
-        Function&& ExtensionInvoke(FromIndexType<LastIndex>, Function&& function) const
+        Function&& operator()(FromIndexType<LastIndex>, Function&& function) const
         {
             detail::Iterate<0, LastIndex>(std::forward<Function>(function));
             return std::forward<Function>(function);
@@ -475,7 +475,7 @@ namespace myakish::algebraic
     struct IterateFunctor : functional::ExtensionMethod
     {
         template<ProductConcept Type, typename Function>
-        decltype(auto) ExtensionInvoke(Type&& product, Function&& function) const
+        decltype(auto) operator()(Type&& product, Function&& function) const
         {
             auto Func = [&]<Size Index>(FromIndexType<Index>)
             {
@@ -741,7 +741,7 @@ namespace myakish::algebraic
 
 
         template<SumConcept Type, ProductConcept Functions> requires (Count<Type&&> == Count<Functions&&>)
-            auto ExtensionInvoke(Type&& sum, Functions&& functions) const
+            auto operator()(Type&& sum, Functions&& functions) const
         {
             using ResultType = ReturnType<Type&&, Functions&&>::type;
 
@@ -754,7 +754,7 @@ namespace myakish::algebraic
         }
 
         template<ProductConcept Type, ProductConcept Functions> requires (Count<Type&&> == Count<Functions&&>)
-            auto ExtensionInvoke(Type&& product, Functions&& functions) const
+            auto operator()(Type&& product, Functions&& functions) const
         {
             using ResultType = ReturnType<Type&&, Functions&&>::type;
 
@@ -763,9 +763,9 @@ namespace myakish::algebraic
 
 
         template<AlgebraicConcept Type, typename ...Functions> requires (Count<Type&&> == sizeof...(Functions))
-            auto ExtensionInvoke(Type&& algebraic, Functions&&... functions) const
+            auto operator()(Type&& algebraic, Functions&&... functions) const
         {
-            return ExtensionInvoke(std::forward<Type>(algebraic), ForwardAsTuple(std::forward<Functions>(functions)...));
+            return operator()(std::forward<Type>(algebraic), ForwardAsTuple(std::forward<Functions>(functions)...));
         }
     };
     inline constexpr MultitransformFunctor Multitransform;
@@ -793,7 +793,7 @@ namespace myakish::algebraic
     struct RepeatFunctor : functional::ExtensionMethod
     {
         template<typename Type>
-        auto ExtensionInvoke(Type&& value) const
+        auto operator()(Type&& value) const
         {
             return RepeatType<Type, FromIndexType<Count>>(std::forward<Type>(value));
         }
@@ -808,7 +808,7 @@ namespace myakish::algebraic
     struct TransformFunctor : functional::ExtensionMethod
     {
         template<AlgebraicConcept Type, typename Function>
-        auto ExtensionInvoke(Type&& algebraic, Function&& function) const
+        auto operator()(Type&& algebraic, Function&& function) const
         {
             return Multitransform(std::forward<Type>(algebraic), Repeat<Count<Type&&>>(std::forward<Function>(function)));
         }
@@ -827,7 +827,7 @@ namespace myakish::algebraic
         };
 
         template<ProductConcept Type>
-        auto ExtensionInvoke(Type&& product, Size index) const
+        auto operator()(Type&& product, Size index) const
         {
             using ResultType = ReturnType<Type&&>::type;
 
@@ -846,7 +846,7 @@ namespace myakish::algebraic
     struct CastFunctor : functional::ExtensionMethod
     {
         template<SumConcept From>
-        To ExtensionInvoke(From&& from) const
+        To operator()(From&& from) const
         {
             auto CastFunc = []<typename Arg>(Arg && arg) -> To
             {
@@ -865,7 +865,7 @@ namespace myakish::algebraic
     struct SynthesizeFunctor : functional::ExtensionMethod
     {
         template<typename ...Args>
-        auto ExtensionInvoke(Size index, Args&&... args) const
+        auto operator()(Size index, Args&&... args) const
         {
             auto CreateFunc = [&]<Size Index>(FromIndexType<Index>)
             {
@@ -891,7 +891,7 @@ namespace myakish::algebraic
     struct ApplyFunctor : functional::ExtensionMethod
     {
         template<typename Function, ProductConcept Type>
-        decltype(auto) ExtensionInvoke(Type&& product, Function&& function) const
+        decltype(auto) operator()(Type&& product, Function&& function) const
         {
             return detail::Apply(std::forward<Type>(product), std::forward<Function>(function), std::make_integer_sequence<myakish::Size, Count<Type&&>>{});
         }

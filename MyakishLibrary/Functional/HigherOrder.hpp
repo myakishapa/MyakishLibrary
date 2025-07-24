@@ -3,50 +3,56 @@
 #include <tuple>
 #include <ranges>
 
-#include <MyakishLibrary/Functional/Pipeline.hpp>
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 
 namespace myakish::functional::higher_order
 {
-    struct ConstantFunctor : ExtensionMethod, DisallowDirectInvoke, RightCurry
+    struct ConstantFunctor
     {
-        template<typename Type>
-        constexpr Type ExtensionInvoke(Type value, auto&&... _) const
+        constexpr auto operator()(auto value) const
         {
-            return value;
+            return [=](auto&&...)
+                {
+                    return value;
+                };
         }
     };
     inline constexpr ConstantFunctor Constant;
 
-    constexpr auto DecayCompose()
-    {
-        return std::identity{};
-    }
 
-    template<typename First, typename ...Rest>
-    constexpr auto DecayCompose(First first, Rest... rest)
+
+    namespace detail
     {
-        return [...rest = std::move(rest), first = std::move(first)]<typename ...Args>(Args&&... args) -> auto
+        constexpr auto DecayCompose()
         {
-            return DecayCompose(std::move(rest)...)(std::invoke(first, std::forward<Args>(args)...));
-        };
+            return std::identity{};
+        }
+
+        template<typename First, typename ...Rest>
+        constexpr auto DecayCompose(First first, Rest... rest)
+        {
+            return[...rest = std::move(rest), first = std::move(first)]<typename ...Args>(Args&&... args) -> auto
+            {
+                return DecayCompose(std::move(rest)...)(std::invoke(first, std::forward<Args>(args)...));
+            };
+        }
     }
 
-    struct DecayThenFunctor : ExtensionMethod, DisallowDirectInvoke
+    struct DecayComposeFunctor : ExtensionMethod
     {
         template<typename ...Functions>
-        constexpr auto ExtensionInvoke(Functions... functions) const
+        constexpr auto operator()(Functions... functions) const
         {
-            return DecayCompose(std::move(functions)...);
+            return detail::DecayCompose(std::move(functions)...);
         }
     };
-    inline constexpr DecayThenFunctor DecayThen;
+    inline constexpr DecayComposeFunctor DecayCompose;
 
 
     struct MakeCopyFunctor : ExtensionMethod
     {
         template<typename Arg>
-        constexpr auto ExtensionInvoke(Arg&& arg) const
+        constexpr auto operator()(Arg&& arg) const
         {
             return std::forward<Arg>(arg);
         }
@@ -57,7 +63,7 @@ namespace myakish::functional::higher_order
     struct StaticCastFunctor : ExtensionMethod
     {
         template<typename Arg>
-        constexpr auto ExtensionInvoke(Arg&& arg) const
+        constexpr auto operator()(Arg&& arg) const
         {
             return static_cast<Type>(std::forward<Arg>(arg));
         }
