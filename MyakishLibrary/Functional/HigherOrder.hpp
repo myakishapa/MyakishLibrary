@@ -31,7 +31,7 @@ namespace myakish::functional::higher_order
         template<typename First, typename ...Rest>
         constexpr auto DecayCompose(First first, Rest... rest)
         {
-            return[...rest = std::move(rest), first = std::move(first)]<typename ...Args>(Args&&... args) -> auto
+            return[...rest = std::move(rest), first = std::move(first)]<typename ...Args>(Args&&... args) -> decltype(auto)
             {
                 return DecayCompose(std::move(rest)...)(std::invoke(first, std::forward<Args>(args)...));
             };
@@ -58,6 +58,39 @@ namespace myakish::functional::higher_order
         }
     };
     inline constexpr MakeCopyFunctor MakeCopy;
+
+    struct AsMutableFunctor : ExtensionMethod
+    {
+        template<typename Arg>
+        constexpr decltype(auto) operator()(Arg&& arg) const
+        {
+            return const_cast<std::remove_cvref_t<Arg>&>(arg);
+        }
+    };
+    inline constexpr AsMutableFunctor AsMutable;
+
+    struct IdentityFunctor : ExtensionMethod
+    {
+        template<typename Arg>
+        constexpr Arg&& operator()(Arg&& arg) const
+        {
+            return std::forward<Arg>(arg);
+        }
+    };
+    inline constexpr IdentityFunctor Identity;
+
+    template<typename Type>
+    struct ConstructFunctor : ExtensionMethod
+    {
+        template<typename ...Args>
+        constexpr Type operator()(Args&&... args) const
+        {
+            return Type(std::forward<Args>(args)...);
+        }
+    };
+    template<typename Type>
+    inline constexpr ConstructFunctor<Type> Construct;
+
 
     template<typename Type>
     struct StaticCastFunctor : ExtensionMethod

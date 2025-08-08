@@ -898,4 +898,17 @@ namespace myakish::algebraic
     };
     inline constexpr ApplyFunctor Apply;
 
+    struct UnpackFunctor : functional::ExtensionMethod
+    {
+        template<typename Function>
+        auto operator()(Function&& function) const
+        {
+            return [&]<ProductConcept Arg>(Arg && product) -> decltype(auto)
+            {
+                return Apply(std::forward<Arg>(product), std::forward<Function>(function));
+            };
+        }
+    };
+    inline constexpr UnpackFunctor Unpack;
+
 }

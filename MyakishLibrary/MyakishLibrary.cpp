@@ -474,6 +474,8 @@ int main()
             auto result = var | alg::Multitransform[intToStr, floatToInt, transformLong] | alg::Transform[zipWith3];
 
             result | alg::Visit[test];
+
+            auto val = result | alg::Get<2>;
         }
 
         {

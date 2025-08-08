@@ -82,7 +82,29 @@ namespace myakish::meta
     struct TypeValueType : ReturnType<Type> {};
     template<typename Type>
     inline constexpr TypeValueType<Type> TypeValue;
+
+
+    template<template<typename...> typename BaseFunction>
+    struct LiftToType
+    {
+        template<typename ...Args>
+        struct Function
+        {
+            using type = ValueType<BaseFunction<Args...>::value>;
+        };
+    };
     
+    template<typename Type>
+    struct ValueProjection : ReturnValue<Type::value> {};
+
+
+    template<typename Type>
+    struct Constant
+    {
+        template<typename...>
+        struct Function : ReturnType<Type> {};
+    };
+
 
     namespace detail
     {
@@ -297,10 +319,7 @@ namespace myakish::meta
     struct Compose
     {
         template<typename... Args>
-        struct Function
-        {
-            using type = typename Compose<Functions...>::template Function<typename First<Args...>::type>::type;
-        };
+        struct Function : Compose<Functions...>::template Function<typename First<Args...>::type> {};
     };
 
     template<template<typename...> typename Only>
@@ -368,4 +387,11 @@ namespace myakish::meta
     };
     template<typename List>
     inline constexpr ForEachFunctor<List> ForEach;
+
+    template<auto Predicate>
+    struct ConstexprPredicateMetafunction
+    {
+        template<typename ...Types>
+        struct Function : ReturnValue<std::invoke(Predicate, TypeValue<Types>...)> {};
+    };
 }
