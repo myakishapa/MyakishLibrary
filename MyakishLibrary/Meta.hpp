@@ -95,7 +95,7 @@ namespace myakish::meta
     };
     
     template<typename Type>
-    struct ValueProjection : ReturnValue<Type::value> {};
+    struct ValueProjection : Type {};
 
 
     template<typename Type>
@@ -294,6 +294,18 @@ namespace myakish::meta
     struct QuotedFilter : Filter<Quoted::template Function, List> {};
 
 
+    template<template<typename> typename Predicate, typename NonList>
+    struct AnyOf : Undefined {};
+
+    template<template<typename> typename Predicate>
+    struct AnyOf<Predicate, TypeList<>>  : ReturnValue<false> {};
+
+    template<template<typename> typename Predicate, typename First, typename ...Rest>
+    struct AnyOf<Predicate, TypeList<First, Rest...>> : ReturnValue<Predicate<First>::value || AnyOf<Predicate, TypeList<Rest...>>::value> {};
+
+    template<typename Quoted, typename List>
+    struct QuotedAnyOf : AnyOf<Quoted::template Function, List> {};
+
 
     template<template<typename> typename BaseFunction>
     struct Not
@@ -394,4 +406,8 @@ namespace myakish::meta
         template<typename ...Types>
         struct Function : ReturnValue<std::invoke(Predicate, TypeValue<Types>...)> {};
     };
+
+
+    template<typename Type, template<typename> typename Predicate, template<typename> typename Transform = std::remove_cvref>
+    concept UnreferencesToConcept = Predicate<typename Transform<Type>::type>::value;
 }

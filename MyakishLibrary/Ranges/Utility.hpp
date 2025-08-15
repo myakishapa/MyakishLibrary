@@ -19,4 +19,17 @@ namespace myakish::ranges
         }
     };
     inline constexpr FindElementFunctor FindElement;
+
+    struct FindElementIfFunctor : functional::ExtensionMethod
+    {
+        template<std::ranges::input_range Range, class Predicate, class Projection = std::identity>
+        algebraic::Variant<std::nullopt_t, std::ranges::range_reference_t<Range>> operator()(Range&& range, const Predicate& predicate, Projection projection = {}) const
+        {
+            auto it = std::ranges::find_if(range, predicate, projection);
+            if (it != std::ranges::end(range)) return *it;
+            else return std::nullopt;
+        }
+    };
+    inline constexpr FindElementIfFunctor FindElementIf;
+
 }

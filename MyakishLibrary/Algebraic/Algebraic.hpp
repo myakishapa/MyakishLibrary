@@ -911,4 +911,47 @@ namespace myakish::algebraic
     };
     inline constexpr UnpackFunctor Unpack;
 
+    /*
+    template<functional::LambdaExpressionConcept Expression>
+    struct UnpackLambdaTransform
+    {
+        Expression expression;
+
+        UnpackLambdaTransform(Expression expression) : expression(std::move(expression)) {}
+
+        template<typename Invocable, typename ArgsTuple> requires(0 <= Index && Index < std::tuple_size_v<std::remove_cvref_t<ArgsTuple>>)
+        constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple& argsTuple) const
+        {
+            auto Transform = []<AlgebraicConcept Arg>(Arg && arg) -> decltype(auto)
+            {
+                if constexpr (SumConcept<Arg&&>) return Visit(std::forward<Arg>(arg));
+                else return Visit(std::forward<Arg>(arg));
+            };
+
+            auto InvocableSubstitute = []<typename ...Args>(Args&&... args) -> decltype(auto)
+            {
+                return std::invoke(std::forward<Invocable>(invocable), Transform(std::forward<Args>(args))... );
+            };
+
+            return std::invoke(InvocableSubstitute, detail::ForwardFromTuple<Index>(argsTuple));
+        }
+    };
+    template<functional::LambdaExpressionConcept Expression>
+    UnpackLambdaTransform(Expression) -> UnpackLambdaTransform<Expression>;
+    */
+}
+
+namespace myakish::functional
+{
+    template<typename Arg, PipelinableTo Extension>
+    decltype(auto) operator||(Arg&& arg, Extension&& ext)
+    {
+        return std::forward<Extension>(ext)(std::forward<Arg>(arg));
+    }
+
+    template<algebraic::SumConcept SumType, PipelinableTo Extension>
+    decltype(auto) operator||(SumType&& sum, Extension&& ext)
+    {
+        return algebraic::Visit(std::forward<SumType>(sum), std::forward<Extension>(ext));
+    }
 }

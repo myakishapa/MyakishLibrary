@@ -40,7 +40,7 @@ namespace hv = myakish::tree;
 namespace dg = myakish::dependency_graph;
 namespace bst = myakish::binary_serialization_suite;
 namespace meta = myakish::meta;
-namespace hof = myakish::functional::higher_order;
+namespace hof = myakish::functional;
 namespace alg = myakish::algebraic;
 
 using namespace hv::literals;
@@ -511,6 +511,7 @@ int main()
 
             std::println();
         }
+
     }
 
     {
@@ -523,6 +524,16 @@ int main()
             };
 
         meta::ForEach<List>(Func);
+    }
+
+    {
+        std::vector nums = { 1, 2, 3, 4, 5 };
+
+        auto lambda = hof::Complete(hof::Arg<0> % 2 == 0);
+
+        auto even = std::ranges::count_if(nums, lambda);
+        
+        std::println();
     }
 }
 

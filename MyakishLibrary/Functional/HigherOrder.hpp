@@ -5,7 +5,7 @@
 
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 
-namespace myakish::functional::higher_order
+namespace myakish::functional::inline higher_order
 {
     struct ConstantFunctor
     {
