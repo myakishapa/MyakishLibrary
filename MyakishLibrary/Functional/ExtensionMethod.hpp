@@ -14,6 +14,13 @@ namespace myakish::functional
     concept LambdaExpressionConcept = LambdaExpression<std::remove_cvref_t<Type>>::value;
 
 
+    template<typename Lambda, typename ...Args>
+    concept Resolvable = LambdaExpressionConcept<Lambda> && requires(const Lambda resolver, Args&&... args)
+    {
+        resolver.LambdaResolve(std::forward<Args>(args)...);
+    };
+
+
     struct LambdaExpressionTag {};
 
     template<std::derived_from<LambdaExpressionTag> Type>
@@ -22,20 +29,20 @@ namespace myakish::functional
     namespace detail
     {
         template<myakish::Size Index, typename ...Types, typename ReturnType = meta::At<Index, meta::TypeList<Types...>>::type>
-        ReturnType ForwardFromTuple(const std::tuple<Types...>& tuple) requires std::is_reference_v<ReturnType>
+        constexpr ReturnType ForwardFromTuple(const std::tuple<Types...>& tuple) requires std::is_reference_v<ReturnType>
         {
             return std::forward<ReturnType>(std::get<Index>(tuple));
         }
 
 
         template<typename Invocable, typename ...Types, myakish::Size ...Indices> requires(std::invocable<Invocable&&, Types&&...>)
-            decltype(auto) ForwardingApply(Invocable&& invocable, const std::tuple<Types...>& tuple, std::integer_sequence<myakish::Size, Indices...>)
+        constexpr decltype(auto) ForwardingApply(Invocable&& invocable, const std::tuple<Types...>& tuple, std::integer_sequence<myakish::Size, Indices...>)
         {
             return std::invoke(std::forward<Invocable>(invocable), ForwardFromTuple<Indices>(tuple)...);
         }
 
         template<typename Invocable, typename ...Types> requires(std::invocable<Invocable&&, Types&&...>)
-            decltype(auto) ForwardingApply(Invocable&& invocable, const std::tuple<Types...>& tuple)
+        constexpr decltype(auto) ForwardingApply(Invocable&& invocable, const std::tuple<Types...>& tuple)
         {
             return ForwardingApply(std::forward<Invocable>(invocable), tuple, std::make_integer_sequence<myakish::Size, sizeof...(Types)>{});
         }
@@ -45,8 +52,8 @@ namespace myakish::functional
     template<myakish::Size Index>
     struct Placeholder : LambdaExpressionTag
     {
-        template<typename Invocable, typename ArgsTuple> requires(0 <= Index && Index < std::tuple_size_v<std::remove_cvref_t<ArgsTuple>>)
-            constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple& argsTuple) const
+        template<typename Invocable, typename ArgsTuple> requires(0 <= Index && Index < std::tuple_size_v<std::remove_cvref_t<ArgsTuple>> && std::invocable<Invocable&&, std::tuple_element_t<Index, ArgsTuple>>)
+        constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple& argsTuple) const
         {
             return std::invoke(std::forward<Invocable>(invocable), detail::ForwardFromTuple<Index>(argsTuple));
         }
@@ -62,7 +69,7 @@ namespace myakish::functional
 
         constexpr ConstantExpression(Value value) : value(std::forward<Value>(value)) {}
 
-        template<typename Invocable, typename ArgsTuple>
+        template<std::invocable<Value> Invocable, typename ArgsTuple>
         constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple&) const
         {
             return std::invoke(std::forward<Invocable>(invocable), static_cast<Value>(value));
@@ -76,63 +83,112 @@ namespace myakish::functional
     namespace detail
     {
         template<typename NonLambda>
-        auto MakeExpression(NonLambda&& value)
+        constexpr auto MakeExpression(NonLambda&& value)
         {
             return ConstantExpression(std::forward<NonLambda>(value));
         }
 
         template<LambdaExpressionConcept Lambda>
-        Lambda&& MakeExpression(Lambda&& lambda)
+        constexpr Lambda&& MakeExpression(Lambda&& lambda)
         {
             return std::forward<Lambda>(lambda);
         }
 
+#pragma warning(disable: 26800)
 
-        template<typename Continuation>
-        decltype(auto) IndirectAccumulate(Continuation&& continuation)
+        template<std::invocable Continuation>
+        constexpr decltype(auto) IndirectAccumulate(Continuation&& continuation)
         {
             return std::invoke(std::forward<Continuation>(continuation));
         }
 
-
-#pragma warning(disable: 26800)
-        template<typename Continuation, typename First, typename ...Rest>
-        decltype(auto) IndirectAccumulate(Continuation&& continuation, First&& first, Rest&&... rest)
+        template<typename Invocable, typename... Bound>
+        struct FrontBind
         {
-            auto InvokeTarget = [&]<typename... ResolvedArgs>(ResolvedArgs&&... resolvedArgs) -> decltype(auto)
+            Invocable&& invocable;
+            std::tuple<Bound&&...> bound;
+
+            constexpr FrontBind(Invocable&& invocable, Bound&&... bound) : invocable(std::forward<Invocable>(invocable)), bound(std::forward<Bound>(bound)...) {}
+
+            template<typename ...Args> requires std::invocable<Invocable&&, Bound&&..., Args&&...>
+            constexpr decltype(auto) operator()(Args&&... args) const
             {
-                auto InvokeWithResolved = [&]<typename... OtherArgs>(OtherArgs&&... otherArgs) -> decltype(auto)
+                auto InvokeTarget = [&](Bound&&... resolvedBound) -> decltype(auto)
                 {
-                    return std::invoke(std::forward<Continuation>(continuation), std::forward<ResolvedArgs>(resolvedArgs)..., std::forward<OtherArgs>(otherArgs)...);
+                    return std::invoke(std::forward<Invocable>(invocable), std::forward<Bound>(resolvedBound)..., std::forward<Args>(args)...);
                 };
 
-                return IndirectAccumulate(InvokeWithResolved, std::forward<Rest>(rest)...);
-            };
+                return detail::ForwardingApply(InvokeTarget, bound);
+            }
+        };
+        template<typename Invocable, typename... Bound>
+        FrontBind(Invocable&&, Bound&&...) -> FrontBind<Invocable&&, Bound&&...>;
 
-            return std::invoke(std::forward<First>(first), InvokeTarget);
+        template<typename Continuation, typename ...Rest>
+        struct IndirectAccumulator;
+
+        template<typename Continuation, typename First, typename ...Rest> requires std::invocable<First&&, IndirectAccumulator<Continuation&&, Rest&&...>>
+        constexpr decltype(auto) IndirectAccumulate(Continuation&& continuation, First&& first, Rest&&... rest)
+        {
+            return std::invoke(std::forward<First>(first), IndirectAccumulator(std::forward<Continuation>(continuation), std::forward<Rest>(rest)...));
         }
 
-
-
-
-        
-        template<LambdaExpressionConcept Resolver, typename ArgsTuple>
-        auto IntoIndirectTransform(const Resolver& resolver, const ArgsTuple& argsTuple)
+        template<typename Continuation, typename ...IndirectTransforms>
+        concept IndirectAccumulatable = requires(Continuation && continuation, IndirectTransforms&&... indirectTransforms)
         {
-            return [&]<typename Continuation>(Continuation && continuation) -> decltype(auto)
+            IndirectAccumulate(std::forward<Continuation>(continuation), std::forward<IndirectTransforms>(indirectTransforms)...);
+        };
+
+        template<typename Continuation, typename ...Rest>
+        struct IndirectAccumulator
+        {
+            Continuation&& continuation;
+            std::tuple<Rest&&...> rest;
+
+            constexpr IndirectAccumulator(Continuation&& continuation, Rest&&... rest) : continuation(std::forward<Continuation>(continuation)), rest(std::forward<Rest>(rest)...) {}
+
+            template<typename... ResolvedArgs> requires IndirectAccumulatable<FrontBind<Continuation&&, ResolvedArgs&&...>&&, Rest&&...>
+            constexpr decltype(auto) operator()(ResolvedArgs&&... resolvedArgs)
             {
-                return resolver.LambdaResolve(std::forward<Continuation>(continuation), argsTuple);
-            };
-        }
+                auto InvokeTarget = [&](Rest&&... resolvedRest) -> decltype(auto)
+                    {
+                        return IndirectAccumulate(FrontBind(std::forward<Continuation>(continuation), std::forward<ResolvedArgs>(resolvedArgs)...), std::forward<Rest>(resolvedRest)...);
+                    };
 
-        template<typename Invocable, typename ArgsTuple, LambdaExpressionConcept ...Resolvers>
-        decltype(auto) LambdaInvoke(Invocable&& invocable, const ArgsTuple& argsTuple, const Resolvers&... resolvers)
+
+                return detail::ForwardingApply(InvokeTarget, rest);
+            };
+        };
+        template<typename Continuation, typename... Rest>
+        IndirectAccumulator(Continuation&&, Rest&&...) -> IndirectAccumulator<Continuation&&, Rest&&...>;
+
+
+
+
+
+        template<LambdaExpressionConcept Resolver, typename ArgsTuple>
+        struct LambdaIndirectTransform
         {
-            return IndirectAccumulate(std::forward<Invocable>(invocable), IntoIndirectTransform(resolvers, argsTuple)...);
+            const Resolver& resolver;
+            const ArgsTuple& argsTuple;
+
+            constexpr LambdaIndirectTransform(const Resolver& resolver, const ArgsTuple& argsTuple) : resolver(resolver), argsTuple(argsTuple) {}
+
+            template<typename Continuation> requires Resolvable<const Resolver&, Continuation&&, const ArgsTuple&>
+            constexpr decltype(auto) operator()(Continuation&& continuation) const
+            {
+                return resolver.LambdaResolve(std::forward<Continuation>(continuation), argsTuple);         
+            }
+        };
+        template<LambdaExpressionConcept Resolver, typename ArgsTuple>
+        LambdaIndirectTransform(const Resolver&, const ArgsTuple&) -> LambdaIndirectTransform<Resolver, ArgsTuple>;
+
+        template<typename Invocable, typename ArgsTuple, LambdaExpressionConcept ...Resolvers> requires IndirectAccumulatable<Invocable&&, LambdaIndirectTransform<Resolvers, ArgsTuple>...>
+        constexpr decltype(auto) LambdaInvoke(Invocable&& invocable, const ArgsTuple& argsTuple, const Resolvers&... resolvers)
+        {
+            return IndirectAccumulate(std::forward<Invocable>(invocable), LambdaIndirectTransform(resolvers, argsTuple)...);
         }
     }
-
-
 
     template<typename Invocable, LambdaExpressionConcept ...ArgResolvers>
     struct LambdaClosure : LambdaExpressionTag
@@ -142,21 +198,35 @@ namespace myakish::functional
 
         constexpr LambdaClosure(Invocable&& baseInvocable, ArgResolvers... resolvers) : baseInvocable(std::forward<Invocable>(baseInvocable)), resolvers(std::move(resolvers)...) {}
 
-        template<typename Invocable, typename ArgsTuple>
-        constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple& argsTuple) const
+        template<typename TargetInvocable, typename ArgsTuple>
+        constexpr decltype(auto) LambdaResolve(TargetInvocable&& targetInvocable, const ArgsTuple& argsTuple) const
         {
-            auto InvokeSelf = [&]<typename ...Args>(Args&&... args) -> decltype(auto) { return Invoke(std::forward<Args>(args)...); };
-            return std::invoke(std::forward<Invocable>(invocable), detail::ForwardingApply(InvokeSelf, argsTuple));
+            auto Transform = [&]<typename ...Args>(Args&&... args) -> decltype(auto)
+                {
+                    return std::invoke(std::forward<TargetInvocable>(targetInvocable), std::invoke(std::forward<Invocable>(baseInvocable), std::forward<Args>(args)...));
+                };
+
+            auto InvokeTarget = [&](const ArgResolvers&... resolvedResolvers) -> decltype(auto)
+                {
+                    return detail::LambdaInvoke(Transform, argsTuple, resolvedResolvers...);
+                };
+
+            return std::apply(InvokeTarget, resolvers);
         }
 
         template<typename ...Args>
         constexpr decltype(auto) operator()(Args&&... args) const
         {
-            return Invoke(std::forward<Args>(args)...);
+            auto InvokeTarget = [&](const ArgResolvers&... resolvedResolvers) -> decltype(auto)
+            {
+                return detail::LambdaInvoke(std::forward<Invocable>(baseInvocable), std::forward_as_tuple(std::forward<Args>(args)...), resolvedResolvers...);
+            };
+
+            return std::apply(InvokeTarget, resolvers);
         }
 
     private:
-
+        /*
         template<typename ...Args>
         constexpr decltype(auto) Invoke(Args&&... args) const
         {
@@ -167,7 +237,7 @@ namespace myakish::functional
         constexpr decltype(auto) Dispatch(std::index_sequence<Indices...>, Args&&... args) const
         {
             return detail::LambdaInvoke(std::forward<Invocable>(baseInvocable), std::forward_as_tuple(std::forward<Args>(args)...), std::get<Indices>(resolvers)...);
-        }
+        }*/
     };
 
     template<typename Invocable, typename ...ArgResolvers>
@@ -180,11 +250,11 @@ namespace myakish::functional
         Invocable&& baseInvocable;
         std::tuple<CurryArgs&&...> curryArgs;
 
-        ExtensionClosure(Invocable&& baseInvocable, CurryArgs&&... curryArgs) : baseInvocable(std::forward<Invocable>(baseInvocable)), curryArgs(std::forward<CurryArgs>(curryArgs)...) {}
+        constexpr ExtensionClosure(Invocable&& baseInvocable, CurryArgs&&... curryArgs) : baseInvocable(std::forward<Invocable>(baseInvocable)), curryArgs(std::forward<CurryArgs>(curryArgs)...) {}
 
 
         template<typename ...Args> requires std::invocable<Invocable&&, Args&&..., CurryArgs&&...>
-        decltype(auto) operator()(Args&&... args) const
+        constexpr decltype(auto) operator()(Args&&... args) const
         {
             return Dispatch(std::make_index_sequence<sizeof...(CurryArgs)>{}, std::forward<Args>(args)...);
         }
@@ -192,7 +262,7 @@ namespace myakish::functional
     private:
 
         template<typename ...Args, std::size_t ...Indices> requires std::invocable<Invocable&&, Args&&..., CurryArgs&&...>
-        decltype(auto) Dispatch(std::index_sequence<Indices...> seq, Args&&... args) const
+        constexpr decltype(auto) Dispatch(std::index_sequence<Indices...> seq, Args&&... args) const
         {
             return std::invoke(std::forward<Invocable>(baseInvocable), std::forward<Args>(args)..., std::forward<CurryArgs>(std::get<Indices>(curryArgs))...);
         }
@@ -205,7 +275,7 @@ namespace myakish::functional
     struct ExtensionMethod
     {
         template<typename Self, typename ...Args>
-        auto operator[](this Self&& self, Args&&... args)
+        constexpr auto operator[](this Self&& self, Args&&... args)
         {
             if constexpr (meta::QuotedAnyOf<meta::Compose<std::remove_cvref, LambdaExpression>, meta::TypeList<Args&&...>>::value)
                 return LambdaClosure(std::forward<Self>(self), detail::MakeExpression(std::forward<Args>(args))...);
@@ -220,21 +290,33 @@ namespace myakish::functional
         {
             Invocable&& invocable;
 
-            PartialApplier(Invocable&& invocable) : invocable(std::forward<Invocable>(invocable)) {}
+            constexpr PartialApplier(Invocable&& invocable) : invocable(std::forward<Invocable>(invocable)) {}
 
             template<typename ...Args>
-            auto operator()(Args&&... args) const
+            constexpr auto operator()(Args&&... args) const
             {
                 return std::forward<Invocable>(invocable)[std::forward<Args>(args)...];
             }
         };
 
         template<typename Self>
-        auto operator*(this Self&& self)
+        constexpr auto operator*(this Self&& self)
         {
             return PartialApplier<Self>(std::forward<Self>(self));
         }
     };
+
+
+    struct IndirectAccumulateFunctor : ExtensionMethod
+    {
+        template<typename Continuation, typename ...IndirectTransforms> requires detail::IndirectAccumulatable<Continuation&&, IndirectTransforms&&...>
+        constexpr decltype(auto) operator()(Continuation&& continuation, IndirectTransforms&&... indirectTransforms) const
+        {
+            return detail::IndirectAccumulate(std::forward<Continuation>(continuation), std::forward<IndirectTransforms>(indirectTransforms)...);
+        }
+    };
+    inline constexpr IndirectAccumulateFunctor IndirectAccumulate;
+
 
 
     template<typename Type>
@@ -255,10 +337,10 @@ namespace myakish::functional
     {
         Expression expression;
 
-        CompleteLambda(Expression expression) : expression(std::move(expression)) {}
+        constexpr CompleteLambda(Expression expression) : expression(std::move(expression)) {}
 
         template<typename ...Args>
-        decltype(auto) operator()(Args&&... args) const
+        constexpr decltype(auto) operator()(Args&&... args) const
         {
             return expression(std::forward<Args>(args)...);
         }
@@ -269,12 +351,47 @@ namespace myakish::functional
     struct CompleteFunctor : ExtensionMethod, DisableLambdaOperatorsTag
     {
         template<LambdaExpressionConcept Expression>
-        auto operator()(Expression expression) const
+        constexpr auto operator()(Expression expression) const
         {
             return CompleteLambda(std::forward<Expression>(expression));
         }
     };
     inline constexpr CompleteFunctor Complete;
+
+    template<typename Transform, typename Continuation>
+    struct TransformedContinuation
+    {
+        Transform&& transform;
+        Continuation&& continuation;
+
+        constexpr TransformedContinuation(Transform&& transform, Continuation&& continuation) : transform(std::forward<Transform>(transform)), continuation(std::forward<Continuation>(continuation)) {}
+
+        template<typename ...Args> requires((std::invocable<Transform&&, Args&&>) && ...)
+        constexpr decltype(auto) operator()(Args&&... args) const
+        {
+            return IndirectAccumulate(std::forward<Continuation>(continuation), std::invoke(std::forward<Transform>(transform), std::forward<Args>(args))...);
+        }
+    };
+    template<typename Transform, typename Continuation>
+    TransformedContinuation(Transform&&, Continuation&&) -> TransformedContinuation<Transform&&, Continuation&&>;
+
+    template<LambdaExpressionConcept Expression, typename Transform>
+    struct LambdaTransform : LambdaExpressionTag
+    {      
+        Expression expression;
+        Transform&& transform;
+
+        constexpr LambdaTransform(Expression expression, Transform&& transform) : expression(std::move(expression)), transform(std::forward<Transform>(transform)) {}
+
+        template<typename Self, typename Invocable, typename ArgsTuple>
+        constexpr decltype(auto) LambdaResolve(this Self&& self, Invocable&& invocable, const ArgsTuple& argsTuple) requires Resolvable<Expression, TransformedContinuation<Transform&&, Invocable&&>, const ArgsTuple&>
+        {
+            return self.expression.LambdaResolve(TransformedContinuation(std::forward<Transform>(self.transform), std::forward<Invocable>(invocable)), argsTuple);
+        }
+    };
+    template<LambdaExpressionConcept Expression, typename Transform>
+    LambdaTransform(Expression, Transform&&) -> LambdaTransform<Expression, Transform&&>;
+
 
     inline namespace higher_order
     {
@@ -283,7 +400,7 @@ namespace myakish::functional
     struct name##Functor : ExtensionMethod \
     { \
         template<class Arg>\
-        decltype(auto) operator()(Arg&& arg) const requires requires { op std::forward<Arg>(arg); } \
+        constexpr decltype(auto) operator()(Arg&& arg) const requires requires { op std::forward<Arg>(arg); } \
         { \
             return op std::forward<Arg>(arg); \
         } \
@@ -294,7 +411,7 @@ namespace myakish::functional
     struct name##Functor : ExtensionMethod \
     { \
         template<class Arg>\
-        decltype(auto) operator()(Arg&& arg) const requires requires { std::forward<Arg>(arg) op; } \
+        constexpr decltype(auto) operator()(Arg&& arg) const requires requires { std::forward<Arg>(arg) op; } \
         { \
             return std::forward<Arg>(arg) op; \
         } \
@@ -305,7 +422,7 @@ namespace myakish::functional
     struct name##Functor : ExtensionMethod \
     { \
         template<typename Lhs, typename Rhs> \
-        decltype(auto) operator()(Lhs&& lhs, Rhs&& rhs) const requires requires { std::forward<Lhs>(lhs) op std::forward<Rhs>(rhs); } \
+        constexpr decltype(auto) operator()(Lhs&& lhs, Rhs&& rhs) const requires requires { std::forward<Lhs>(lhs) op std::forward<Rhs>(rhs); } \
         { \
             return std::forward<Lhs>(lhs) op std::forward<Rhs>(rhs); \
         } \
@@ -315,13 +432,13 @@ namespace myakish::functional
         struct PlusFunctor : ExtensionMethod
         {
             template<typename Lhs, typename Rhs> 
-            decltype(auto) operator()(Lhs&& lhs, Rhs&& rhs) const requires requires { std::forward<Lhs>(lhs) + std::forward<Rhs>(rhs); }
+            constexpr decltype(auto) operator()(Lhs&& lhs, Rhs&& rhs) const requires requires { std::forward<Lhs>(lhs) + std::forward<Rhs>(rhs); }
             {
                 return std::forward<Lhs>(lhs) + std::forward<Rhs>(rhs);
             }
 
             template<typename Arg>
-            decltype(auto) operator()(Arg&& arg) const requires requires { +std::forward<Arg>(arg); }
+            constexpr decltype(auto) operator()(Arg&& arg) const requires requires { +std::forward<Arg>(arg); }
             {
                 return +std::forward<Arg>(arg);
             }
@@ -331,13 +448,13 @@ namespace myakish::functional
         struct MinusFunctor : ExtensionMethod
         {
             template<typename Lhs, typename Rhs>
-            decltype(auto) operator()(Lhs&& lhs, Rhs&& rhs) const requires requires { std::forward<Lhs>(lhs) - std::forward<Rhs>(rhs); }
+            constexpr decltype(auto) operator()(Lhs&& lhs, Rhs&& rhs) const requires requires { std::forward<Lhs>(lhs) - std::forward<Rhs>(rhs); }
             {
                 return std::forward<Lhs>(lhs) - std::forward<Rhs>(rhs);
             }
 
             template<typename Arg>
-            decltype(auto) operator()(Arg&& arg) const requires requires { -std::forward<Arg>(arg); }
+            constexpr decltype(auto) operator()(Arg&& arg) const requires requires { -std::forward<Arg>(arg); }
             {
                 return -std::forward<Arg>(arg);
             }
@@ -347,7 +464,7 @@ namespace myakish::functional
         struct SubscriptFunctor : ExtensionMethod
         {
             template<typename Lhs, typename ...Args>
-            decltype(auto) operator()(Lhs&& lhs, Args&&... args) const requires requires { std::forward<Lhs>(lhs)[std::forward<Args>(args)...]; }
+            constexpr decltype(auto) operator()(Lhs&& lhs, Args&&... args) const requires requires { std::forward<Lhs>(lhs)[std::forward<Args>(args)...]; }
             {
                 return std::forward<Lhs>(lhs)[std::forward<Args>(args)...];
             }
@@ -405,21 +522,21 @@ namespace myakish::functional
 
 #define PREFIX_UNARY_OPERATOR(op, name) \
     template<LambdaOperandConcept Arg> requires LambdaExpressionConcept<Arg> \
-    auto operator op(Arg&& arg) \
+    constexpr auto operator op(Arg&& arg) \
     { \
         return name[std::forward<Arg>(arg)]; \
     }
 
 #define POSTFIX_UNARY_OPERATOR(op, name) \
     template<LambdaOperandConcept Arg> requires LambdaExpressionConcept<Arg> \
-    auto operator op(Arg&& arg, int) \
+    constexpr auto operator op(Arg&& arg, int) \
     { \
         return name[std::forward<Arg>(arg)]; \
     }
 
 #define BINARY_OPERATOR(op, name) \
     template<LambdaOperandConcept Lhs, LambdaOperandConcept Rhs> requires(LambdaExpressionConcept<Lhs&&> || LambdaExpressionConcept<Rhs&&>) \
-    auto operator op(Lhs&& lhs, Rhs&& rhs) \
+    constexpr auto operator op(Lhs&& lhs, Rhs&& rhs) \
     { \
         return name[std::forward<Lhs>(lhs), std::forward<Rhs>(rhs)]; \
     }
@@ -479,9 +596,10 @@ namespace myakish::functional
     concept PipelinableTo = std::derived_from<std::remove_cvref_t<Type>, ExtensionMethod> || meta::InstanceOfConcept<Type, ExtensionClosure> || meta::InstanceOfConcept<Type, ExtensionMethod::PartialApplier>;
 
     template<typename Arg, PipelinableTo Extension>
-    decltype(auto) operator|(Arg&& arg, Extension&& ext)
+    constexpr decltype(auto) operator|(Arg&& arg, Extension&& ext)
     {
         return std::forward<Extension>(ext)(std::forward<Arg>(arg));
     }
     
+
 }

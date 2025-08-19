@@ -68,6 +68,17 @@ struct dg::DefaultCreateTraits<pes>
 };
 
 
+struct IntOrNotFunctor : hof::ExtensionMethod
+{
+    template<typename Type>
+    void operator()(Type value) const
+    {
+        if (std::integral<Type>) std::println("int");
+        else std::println("not int");
+    }
+};
+inline constexpr IntOrNotFunctor IntOrNot;
+
 
 int main()
 {
@@ -372,7 +383,7 @@ int main()
         auto func1 = [](int i) -> float { return i * 2.f; };
         auto func2 = [](float f) -> double { return f * 2.0; };
 
-        auto comp = func1 | hof::DecayCompose[std::identity{}] | hof::DecayCompose[func2];
+        auto comp = func1 | hof::DecayCompose[hof::Identity] | hof::DecayCompose[func2];
 
         auto val = comp(2);
 
@@ -399,7 +410,6 @@ int main()
         rule.IO(in, srcVec);
 
         std::println();
-        std::optional<int> a;
     }
 
     {
@@ -534,6 +544,26 @@ int main()
         auto even = std::ranges::count_if(nums, lambda);
         
         std::println();
+    }
+
+    {
+        alg::Variant<int, float> v = 1;
+
+        constexpr auto lambda = alg::Visit[hof::Arg<0>, IntOrNot];
+        constexpr auto lambda2 = IntOrNot[alg::Arg<0>];
+        constexpr auto lambda3 = hof::Invoke[IntOrNot, alg::Arg<0>];
+
+        //hof::detail::IndirectAccumulate(IntOrNot, alg::detail::UnpackLambdaTransform(v));
+
+        lambda(v);
+        lambda2(v);
+        lambda3(v);
+        //lambda2(1);
+
+        //hof::detail::LambdaInvoke(IntOrNot, std::forward_as_tuple(v), alg::Arg<0>);
+
+        //v | alg::Visit[Func];
+
     }
 }
 

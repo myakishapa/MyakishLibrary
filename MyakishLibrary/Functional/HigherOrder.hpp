@@ -5,6 +5,23 @@
 
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 
+namespace myakish::functional::detail
+{
+    constexpr auto DecayCompose()
+    {
+        return std::identity{};
+    }
+
+    template<typename First, typename ...Rest>
+    constexpr auto DecayCompose(First first, Rest... rest)
+    {
+        return[...rest = std::move(rest), first = std::move(first)]<typename ...Args>(Args&&... args) -> decltype(auto)
+        {
+            return DecayCompose(std::move(rest)...)(std::invoke(first, std::forward<Args>(args)...));
+        };
+    }
+}
+
 namespace myakish::functional::inline higher_order
 {
     struct ConstantFunctor
@@ -21,22 +38,7 @@ namespace myakish::functional::inline higher_order
 
 
 
-    namespace detail
-    {
-        constexpr auto DecayCompose()
-        {
-            return std::identity{};
-        }
 
-        template<typename First, typename ...Rest>
-        constexpr auto DecayCompose(First first, Rest... rest)
-        {
-            return[...rest = std::move(rest), first = std::move(first)]<typename ...Args>(Args&&... args) -> decltype(auto)
-            {
-                return DecayCompose(std::move(rest)...)(std::invoke(first, std::forward<Args>(args)...));
-            };
-        }
-    }
 
     struct DecayComposeFunctor : ExtensionMethod
     {
@@ -103,4 +105,14 @@ namespace myakish::functional::inline higher_order
     };
     template<typename Type>
     inline constexpr StaticCastFunctor<Type> StaticCast;
+
+    struct InvokeFunctor : ExtensionMethod
+    {
+        template<typename Invocable, typename ...Args> requires std::invocable<Invocable&&, Args&&...>
+        constexpr decltype(auto) operator()(Invocable&& invocable, Args&&... args) const
+        {
+            return std::invoke(std::forward<Invocable>(invocable), std::forward<Args>(args)...);
+        }
+    };
+    inline constexpr InvokeFunctor Invoke;
 }
