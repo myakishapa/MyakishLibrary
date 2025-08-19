@@ -5,167 +5,230 @@
 #include <vector>
 #include <tuple>
 #include <generator>
-#include <filesystem>
 #include <ranges>
+#include <concepts>
+#include <cmath>
+#include <bit>
 
 #include <MyakishLibrary/Meta.hpp>
 #include <MyakishLibrary/Core.hpp>
 
 namespace myakish
 {
-    template<typename Type>
-    auto AsBytePtr(Type* ptr)
+    struct FactorialFunctor
     {
-        if constexpr (std::is_const_v<Type>) return reinterpret_cast<const std::byte*>(ptr);
-        else return reinterpret_cast<std::byte*>(ptr);
-
-        //return reinterpret_cast<meta::CopyConst<std::byte, Type>*>(ptr);
-    }
-
-    auto ReadFile(std::filesystem::path path)
-    {
-        std::vector<std::byte> result;
-        result.resize(std::filesystem::file_size(path));
-
-        std::ifstream in(path, std::ios::binary);
-        in.read(reinterpret_cast<char*>(result.data()), result.size());
-
-        return result;
-    }
-
-    auto ReadTextFile(std::filesystem::path path)
-    {
-        std::vector<char> result;
-        result.resize(std::filesystem::file_size(path));
-
-        std::ifstream in(path, std::ios::binary);
-        in.read(result.data(), result.size());
-
-        return result;
-    }
-
-
-    auto FormatByteSize(Size size)
-    {
-        using namespace literals;
-
-        if (size < 1024_ssize) return std::format("{} bytes", size);
-        size /= 1024_ssize;
-
-        if (size < 1024_ssize) return std::format("{} KiB", size);
-        size /= 1024_ssize;
-
-        if (size < 1024_ssize) return std::format("{} MiB", size);
-        size /= 1024_ssize;
-
-        if (size < 1024_ssize) return std::format("{} GiB", size);
-        size /= 1024_ssize;
-
-        return std::format("{} TiB", size);
-    }
-
-    namespace detail
-    {
-        template<typename Tuple, std::size_t... IndicesFirst, std::size_t... IndicesSecond>
-        auto SliceTuple(Tuple&& tuple, std::index_sequence<IndicesFirst...>, std::index_sequence<IndicesSecond...>)
+        template<std::integral Number>
+        constexpr Number operator()(Number n) const
         {
-            using std::get;
-            return std::tuple(std::tuple(get<IndicesFirst>(std::forward<Tuple>(tuple))...), std::tuple(get<IndicesSecond + sizeof...(IndicesFirst)>(std::forward<Tuple>(tuple))...));
+            Number result = 1;
+            for (Number i = 2; i <= n; i++) result *= n;
+            return result;
         }
-    }
+    };
+    inline constexpr FactorialFunctor Factorial;
 
-    template<std::size_t First, typename Tuple>
-    auto SliceTuple(Tuple&& tuple)
-    {
-        return detail::SliceTuple(std::forward<Tuple>(tuple), std::make_index_sequence<First>{}, std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<Tuple>> - First>{});
-    }
 
-    template<std::integral Number>
-    std::generator<bool> CollatzWeylPRNG(Number x, Number weyl, Number s)
+    struct ChooseFunctor
     {
-        while (true)
+        template<std::integral Number>
+        constexpr Number operator()(Number n, Number k) const
         {
-            if (x % 2 == 1) x = (3 * x + 1) / 2;
-            else x = x / 2;
-            x ^= (weyl += s);
-
-            co_yield x & 1;
+            return Factorial(n) / (Factorial(k) * Factorial(n - k));
         }
-    }
+    };
+    inline constexpr ChooseFunctor Choose;
 
-
-    template<typename Type, typename ...Args>
-    constexpr Type BitCast(Args... args)
+    struct Log2CeilFunctor
     {
-        std::common_type_t<Args...> array[] = { args... };
-        return std::bit_cast<Type>(array);
-    }
-
-    constexpr std::uint64_t Hash(std::string_view str)
-    {
-        constexpr std::uint64_t multiply = 0xc6a4a7935bd1e995ULL;
-        constexpr std::uint64_t shift = 47ULL;
-        constexpr std::uint64_t seed = 700924169573080812ULL;
-
-        const std::size_t len = str.size();
-        const std::size_t calclen = len ? len + 1 : 0;
-        std::uint64_t hash = seed ^ (calclen * multiply);
-
-        if (len > 0)
+        template<std::unsigned_integral Number>
+        constexpr Number operator()(Number n) const
         {
-            const auto* data = str.data();
-            const auto first_loop_iterations = calclen / 8;
+            return std::countr_zero(std::bit_ceil(n));
+        }
+    };
+    inline constexpr Log2CeilFunctor Log2Ceil;
 
-            for (size_t i = 0; i < first_loop_iterations; ++i)
+
+    struct AsBytePtrFunctor
+    {
+        template<typename Type>
+        auto operator()(Type* ptr) const
+        {
+            if constexpr (std::is_const_v<Type>) return reinterpret_cast<const std::byte*>(ptr);
+            else return reinterpret_cast<std::byte*>(ptr);
+        }
+    };
+    inline constexpr AsBytePtrFunctor AsBytePtr;
+
+
+    struct ReadFileFunctor
+    {
+        auto operator()(const std::filesystem::path& path) const
+        {
+            std::vector<std::byte> result;
+            result.resize(std::filesystem::file_size(path));
+
+            std::ifstream in(path, std::ios::binary);
+            in.read(reinterpret_cast<char*>(result.data()), result.size());
+
+            return result;
+        }
+    };
+    inline constexpr ReadFileFunctor ReadFile;
+
+
+    struct ReadTextFileFunctor
+    {
+        auto operator()(const std::filesystem::path& path) const
+        {
+            std::vector<char> result;
+            result.resize(std::filesystem::file_size(path));
+
+            std::ifstream in(path, std::ios::binary);
+            in.read(result.data(), result.size());
+
+            return result;
+        }
+    };
+    inline constexpr ReadTextFileFunctor ReadTextFile;
+
+    struct FormatByteSizeFunctor
+    {
+        auto operator()(Size size) const
+        {
+            using namespace literals;
+
+            if (size < 1024_ssize) return std::format("{} bytes", size);
+            size /= 1024_ssize;
+
+            if (size < 1024_ssize) return std::format("{} KiB", size);
+            size /= 1024_ssize;
+
+            if (size < 1024_ssize) return std::format("{} MiB", size);
+            size /= 1024_ssize;
+
+            if (size < 1024_ssize) return std::format("{} GiB", size);
+            size /= 1024_ssize;
+
+            return std::format("{} TiB", size);
+        }
+    };
+    inline constexpr FormatByteSizeFunctor FormatByteSize;
+
+
+    struct CollatzWeylPRNGFunctor
+    {
+        template<std::integral Number>
+        std::generator<bool> operator()(Number x, Number weyl, Number s) const
+        {
+            while (true)
             {
-                std::uint64_t k = BitCast<std::uint64_t>(
-                    *data, *(data + 1), *(data + 2), *(data + 3),
-                    *(data + 4), *(data + 5), *(data + 6), *(data + 7));
+                if (x % 2 == 1) x = (3 * x + 1) / 2;
+                else x = x / 2;
+                x ^= (weyl += s);
 
-                k *= multiply;
-                k ^= k >> shift;
-                k *= multiply;
+                co_yield x & 1;
+            }
+        }
+    };
+    inline constexpr CollatzWeylPRNGFunctor CollatzWeylPRNG;
 
-                hash ^= k;
-                hash *= multiply;
-                data += 8;
+
+    template<typename To>
+    struct BitCastFunctor
+    {
+        template<typename ...Args>
+        constexpr To operator()(Args... args) const
+        {
+            std::common_type_t<Args...> array[] = { args... };
+            return std::bit_cast<To>(array);
+        }
+    };
+    template<typename To>
+    inline constexpr BitCastFunctor<To> BitCast;
+
+
+    struct HashFunctor
+    {
+        constexpr std::uint64_t operator()(std::string_view str) const
+        {
+            constexpr std::uint64_t multiply = 0xc6a4a7935bd1e995ULL;
+            constexpr std::uint64_t shift = 47ULL;
+            constexpr std::uint64_t seed = 700924169573080812ULL;
+
+            const std::size_t len = str.size();
+            const std::size_t calclen = len ? len + 1 : 0;
+            std::uint64_t hash = seed ^ (calclen * multiply);
+
+            if (len > 0)
+            {
+                const auto* data = str.data();
+                const auto first_loop_iterations = calclen / 8;
+
+                for (size_t i = 0; i < first_loop_iterations; ++i)
+                {
+                    std::uint64_t k = BitCast<std::uint64_t>(
+                        *data, *(data + 1), *(data + 2), *(data + 3),
+                        *(data + 4), *(data + 5), *(data + 6), *(data + 7));
+
+                    k *= multiply;
+                    k ^= k >> shift;
+                    k *= multiply;
+
+                    hash ^= k;
+                    hash *= multiply;
+                    data += 8;
+                }
+
+                const auto* data2 = str.data() + 8 * first_loop_iterations;
+
+                switch (calclen & 7)
+                {
+                case 7: hash ^= static_cast<uint64_t>(data2[6]) << 48ULL; [[fallthrough]];
+                case 6: hash ^= static_cast<uint64_t>(data2[5]) << 40ULL; [[fallthrough]];
+                case 5: hash ^= static_cast<uint64_t>(data2[4]) << 32ULL; [[fallthrough]];
+                case 4: hash ^= static_cast<uint64_t>(data2[3]) << 24ULL; [[fallthrough]];
+                case 3: hash ^= static_cast<uint64_t>(data2[2]) << 16ULL; [[fallthrough]];
+                case 2: hash ^= static_cast<uint64_t>(data2[1]) << 8ULL; [[fallthrough]];
+                case 1: hash ^= static_cast<uint64_t>(data2[0]);
+                    hash *= multiply;
+                };
             }
 
-            const auto* data2 = str.data() + 8 * first_loop_iterations;
+            hash ^= hash >> shift;
+            hash *= multiply;
+            hash ^= hash >> shift;
 
-            switch (calclen & 7)
-            {
-            case 7: hash ^= static_cast<uint64_t>(data2[6]) << 48ULL; [[fallthrough]];
-            case 6: hash ^= static_cast<uint64_t>(data2[5]) << 40ULL; [[fallthrough]];
-            case 5: hash ^= static_cast<uint64_t>(data2[4]) << 32ULL; [[fallthrough]];
-            case 4: hash ^= static_cast<uint64_t>(data2[3]) << 24ULL; [[fallthrough]];
-            case 3: hash ^= static_cast<uint64_t>(data2[2]) << 16ULL; [[fallthrough]];
-            case 2: hash ^= static_cast<uint64_t>(data2[1]) << 8ULL; [[fallthrough]];
-            case 1: hash ^= static_cast<uint64_t>(data2[0]);
-                hash *= multiply;
-            };
+            return hash;
         }
+    };
+    inline constexpr HashFunctor Hash;
 
-        hash ^= hash >> shift;
-        hash *= multiply;
-        hash ^= hash >> shift;
 
-        return hash;
-    }
-
-    constexpr std::uint64_t HashCombine(std::uint64_t f, std::uint64_t s)
+    struct HashCombineFunctor
     {
-        return f ^ s;
-    }
+        constexpr std::uint64_t operator()(std::uint64_t f, std::uint64_t s) const
+        {
+            return f ^ s;
+        }
+    };
+    inline constexpr HashCombineFunctor HashCombine;
 
 
+    
     template<typename Type>
-    Type FromChars(std::string_view view)
+    struct FromCharsFunctor
     {
-        Type result;
-        std::from_chars(view.data(), view.data() + view.size(), result);
-        return result;
-    }
+        template<typename ...Args>
+        constexpr Type operator()(std::string_view view) const
+        {
+            Type result;
+            std::from_chars(view.data(), view.data() + view.size(), result);
+            return result;
+        }
+    };
+    template<typename Type>
+    inline constexpr FromCharsFunctor<Type> FromChars;
 
 
     struct DirectoryRange : std::ranges::view_interface<DirectoryRange>
@@ -200,27 +263,23 @@ namespace myakish
     };
 
 
-    template<typename Only>
-    constexpr Only&& RightFold(auto&&, Only&& only)
+    struct UnsignFunctor
     {
-        return std::forward<Only>(only);
-    }
-    
-    template<typename First, typename... Rest, typename Invocable>
-    constexpr decltype(auto) RightFold(Invocable&& invocable, First&& first, Rest&&... rest)
-    {
-        return std::invoke(std::forward<Invocable>(invocable), first, RightFold(std::forward<Invocable>(invocable), std::forward<Rest>(rest)...));
-    }
+        template<std::integral Type>
+        constexpr auto operator()(Type num) const
+        {
+            return static_cast<std::make_unsigned_t<Type>>(num);
+        }
+    };
+    inline constexpr UnsignFunctor Unsign;
 
-    template<std::integral Type>
-    constexpr auto Unsign(Type num)
+    struct PaddingFunctor
     {
-        return static_cast<std::make_unsigned_t<Type>>(num);
-    }
-
-    template<std::integral Type>
-    constexpr Type Padding(Type value, Type alignment)
-    {
-        return (alignment - (value % alignment)) % alignment;
-    }
+        template<std::integral Type>
+        constexpr Type operator()(Type value, Type alignment) const
+        {
+            return (alignment - (value % alignment)) % alignment;
+        }
+    };
+    inline constexpr PaddingFunctor Padding;
 }

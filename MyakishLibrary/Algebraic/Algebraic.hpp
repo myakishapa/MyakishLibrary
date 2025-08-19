@@ -3,6 +3,7 @@
 #include <MyakishLibrary/Algebraic/Accessors.hpp>
 
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
+#include <MyakishLibrary/Functional/HigherOrder.hpp>
 
 #include <MyakishLibrary/Meta.hpp>
 
@@ -277,8 +278,8 @@ namespace myakish::algebraic
         using AccessorList = meta::TypeList<Accessors...>;
 
         inline constexpr static auto Max = [](auto first, auto second) { return std::max(first, second); };
-        inline constexpr static auto Size = RightFold(Max, SizeRequirements<Accessors>...);
-        inline constexpr static auto Alignment = RightFold(Max, AlignmentRequirements<Accessors>...);
+        inline constexpr static auto Size = functional::RightFold(Max, SizeRequirements<Accessors>...);
+        inline constexpr static auto Alignment = functional::RightFold(Max, AlignmentRequirements<Accessors>...);
 
         alignas(Alignment) std::byte storage[Size];
         IndexType index;
@@ -530,7 +531,7 @@ namespace myakish::algebraic
         inline constexpr static auto Offsets = CalculateOffsets().Offsets;
         inline constexpr static auto Size = CalculateOffsets().Size;
         inline constexpr static auto Max = [](auto first, auto second) { return std::max(first, second); };
-        inline constexpr static auto Alignment = myakish::RightFold(Max, myakish::Size(1), AlignmentRequirements<Accessors>...);
+        inline constexpr static auto Alignment = functional::RightFold(Max, myakish::Size(1), AlignmentRequirements<Accessors>...);
 
         template<myakish::Size Index>
         inline constexpr static auto Offset = Offsets[Index];

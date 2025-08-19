@@ -16,9 +16,6 @@
     <Filter Include="Header Files\Streams">
       <UniqueIdentifier>{bd4dc624-8280-43e6-a952-58350502fd23}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\Math">
-      <UniqueIdentifier>{26951223-efed-419d-a0a3-764a578d5d9b}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\Enum">
       <UniqueIdentifier>{969d862f-5af5-47c4-bfd7-3f22d6d6fdaf}</UniqueIdentifier>
     </Filter>
@@ -70,9 +67,6 @@
     </ClInclude>
     <ClInclude Include="Streams\Common.hpp">
       <Filter>Header Files\Streams</Filter>
-    </ClInclude>
-    <ClInclude Include="Math\Common.hpp">
-      <Filter>Header Files\Math</Filter>
     </ClInclude>
     <ClInclude Include="Enum\BitwiseOperators.hpp">
       <Filter>Header Files\Enum</Filter>

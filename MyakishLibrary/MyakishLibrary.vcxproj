@@ -159,7 +159,6 @@
     <ClInclude Include="HvTree\Parser\Conversion.hpp" />
     <ClInclude Include="HvTree\Parser\Parser.hpp" />
     <ClInclude Include="HvTree\Parser\Spirit.hpp" />
-    <ClInclude Include="Math\Common.hpp" />
     <ClInclude Include="Meta.hpp" />
     <ClInclude Include="Ranges\Bit.hpp" />
     <ClInclude Include="Ranges\Utility.hpp" />

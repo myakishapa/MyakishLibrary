@@ -20,6 +20,18 @@ namespace myakish::functional::detail
             return DecayCompose(std::move(rest)...)(std::invoke(first, std::forward<Args>(args)...));
         };
     }
+
+    template<typename Only>
+    constexpr Only&& RightFold(auto&&, Only&& only)
+    {
+        return std::forward<Only>(only);
+    }
+
+    template<typename First, typename... Rest, typename Invocable>
+    constexpr decltype(auto) RightFold(Invocable&& invocable, First&& first, Rest&&... rest)
+    {
+        return std::invoke(std::forward<Invocable>(invocable), first, RightFold(std::forward<Invocable>(invocable), std::forward<Rest>(rest)...));
+    }
 }
 
 namespace myakish::functional::inline higher_order
@@ -36,7 +48,15 @@ namespace myakish::functional::inline higher_order
     };
     inline constexpr ConstantFunctor Constant;
 
-
+    struct RightFoldFunctor
+    {
+        template<typename... Args, typename Invocable>
+        constexpr decltype(auto) operator()(Invocable&& invocable, Args&&... args) const
+        {
+            return detail::RightFold(std::forward<Invocable>(invocable), std::forward<Args>(args)...);
+        }
+    };
+    inline constexpr RightFoldFunctor RightFold;
 
 
 

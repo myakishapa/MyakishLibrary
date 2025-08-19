@@ -19,61 +19,49 @@ namespace myakish::tree::array
         return {};
     }
 
-    namespace detail
-    {
-        template<typename Family>
-        struct MakeArrayIndexerFunctor : functional::ExtensionMethod
-        {
-            auto operator()(Size index) const
-            {
-                return ArrayIndex(Family{}, index);
-            }
-        };
-    }
     template<typename Family>
-    inline constexpr detail::MakeArrayIndexerFunctor<Family> MakeArrayIndex;
+    struct MakeArrayIndexFunctor : functional::ExtensionMethod
+    {
+        auto operator()(Size index) const
+        {
+            return ArrayIndex(Family{}, index);
+        }
+    };
+    template<typename Family>
+    inline constexpr MakeArrayIndexFunctor<Family> MakeArrayIndex;
 
     template<typename Family>
     inline constexpr auto Indices = std::views::iota(Size{ 0 }, std::numeric_limits<Size>::max()) | std::views::transform(MakeArrayIndex<Family>);
     
-    namespace detail
+    struct InfiniteFunctor : functional::ExtensionMethod
     {
-        struct InfiniteFunctor : functional::ExtensionMethod
+        template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle>
+        auto operator()(const Descriptor<StorageType, Handle>& descriptor) const
         {
-            template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle>
-            auto operator()(const Descriptor<StorageType, Handle>& descriptor) const
-            {
-                return Indices<typename StorageType::HandleFamily>
-                    | std::views::transform([=](auto index) { return descriptor[index]; });
-            }
-        };
-    }
-    inline constexpr detail::InfiniteFunctor Infinite;
+            return Indices<typename StorageType::HandleFamily>
+                | std::views::transform([=](auto index) { return descriptor[index]; });
+        }
+    };
+    inline constexpr InfiniteFunctor Infinite;
 
-    namespace detail
+    struct RangeFunctor : functional::ExtensionMethod
     {
-        struct RangeFunctor : functional::ExtensionMethod
+        template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle>
+        auto operator()(const Descriptor<StorageType, Handle>& descriptor, Size begin, Size count = std::numeric_limits<Size>::max()) const
         {
-            template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle>
-            auto operator()(const Descriptor<StorageType, Handle>& descriptor, Size begin, Size count = std::numeric_limits<Size>::max()) const
-            {
-                return Infinite(descriptor) | std::views::drop(begin) | std::views::take(count);
-            }
-        };
-    }
-    inline constexpr detail::RangeFunctor Range;
+            return Infinite(descriptor) | std::views::drop(begin) | std::views::take(count);
+        }
+    };
+    inline constexpr RangeFunctor Range;
 
-    namespace detail
+    struct ExistingFunctor : functional::ExtensionMethod
     {
-        struct ExistingFunctor : functional::ExtensionMethod
+        template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle>
+        auto operator()(const Descriptor<StorageType, Handle>& descriptor) const
         {
-            template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle>
-            auto operator()(const Descriptor<StorageType, Handle>& descriptor) const
-            {
-                return Infinite(descriptor)
-                    | std::views::take_while([](auto desc) { return desc.Exists(); });
-            }
-        };
-    }
-    inline constexpr detail::ExistingFunctor Existing;
+            return Infinite(descriptor)
+                | std::views::take_while([](auto desc) { return desc.Exists(); });
+        }
+    };
+    inline constexpr ExistingFunctor Existing;
 }

@@ -179,12 +179,6 @@ int main()
     }
 
     {
-        std::tuple a(1, 2.f, 3.l, 4u);
-
-        auto [f, s] = myakish::SliceTuple<4>(a);
-    }
-
-    {
         for (auto test : myakish::CollatzWeylPRNG(0i64, 0i64, 1i64) | std::views::take(100))
         {
             std::print("{:b}", test);
@@ -418,8 +412,8 @@ int main()
                 return f + s;
             };
 
-        constexpr auto test = myakish::RightFold(sum, 1);
-        constexpr auto test3 = myakish::RightFold(sum, 1, 2, 3);
+        constexpr auto test = hof::RightFold(sum, 1);
+        constexpr auto test3 = hof::RightFold(sum, 1, 2, 3);
     }
 
     {
@@ -559,7 +553,7 @@ int main()
         lambda2(v);
         lambda3(v);
         //lambda2(1);
-
+        
         //hof::detail::LambdaInvoke(IntOrNot, std::forward_as_tuple(v), alg::Arg<0>);
 
         //v | alg::Visit[Func];

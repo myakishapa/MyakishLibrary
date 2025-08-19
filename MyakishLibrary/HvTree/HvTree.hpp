@@ -127,44 +127,36 @@ namespace myakish::tree
             return std::forward<HandleType>(handle);
         }
 
-        namespace detail
+        
+        struct ResolveFunctor : functional::ExtensionMethod
         {
-            struct ResolveFunction
+            template<typename Family, typename Type>
+            decltype(auto) operator()(Family, Type&& wrapper) const
             {
-                template<typename Family, typename Type>
-                decltype(auto) operator()(Family, Type&& wrapper) const
-                {
-                    return ResolveADL(Family{}, std::forward<Type>(wrapper));
-                }
-            };
-        }
-        inline constexpr detail::ResolveFunction Resolve;
+                return ResolveADL(Family{}, std::forward<Type>(wrapper));
+            }
+        };      
+        inline constexpr ResolveFunctor Resolve;
 
-        namespace detail
+        struct NextFunctor : functional::ExtensionMethod
         {
-            struct NextFunction
+            template<Handle Type>
+            decltype(auto) operator()(const Type& handle) const
             {
-                template<Handle Type>
-                decltype(auto) operator()(const Type& handle) const
-                {
-                    return NextADL(handle);
-                }
-            };
-        }
-        inline constexpr detail::NextFunction Next;
+                return NextADL(handle);
+            }
+        };
+        inline constexpr NextFunctor Next;
 
-        namespace detail
+        struct IsChildFunctor : functional::ExtensionMethod
         {
-            struct IsChildFunction
+            template<Handle Type>
+            bool operator()(const Type& parent, const Type& child) const
             {
-                template<Handle Type>
-                bool operator()(const Type& parent, const Type& child) const
-                {
-                    return IsChildADL(parent, child);
-                }
-            };
-        }
-        inline constexpr detail::IsChildFunction IsChild;
+                return IsChildADL(parent, child);
+            }
+        };
+        inline constexpr IsChildFunctor IsChild;
 
         template<typename Type>
         concept LayeredHandle = Handle<Type> && std::totally_ordered<std::remove_cvref_t<Type>> && requires(Type handle)
@@ -289,18 +281,16 @@ namespace myakish::tree
     template<data::Storage StorageType, handle::Wrapper<typename StorageType::HandleFamily> Handle>
     Descriptor(StorageType&, const Handle&) -> Descriptor<StorageType, Handle>;
 
-    namespace detail
-    {
-        template<typename Type>
-        struct AcquireFunction : functional::ExtensionMethod
-        {
-            template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle, typename ...Args>
-            decltype(auto) operator()(const Descriptor<StorageType, Handle>& desc, Args&&... args) const
-            {
-                return desc.Acquire<Type>(std::forward<Args>(args)...);
-            }
-        };
-    }
+    
     template<typename Type>
-    inline constexpr detail::AcquireFunction<Type> Acquire;
+    struct AcquireFunctor : functional::ExtensionMethod
+    {
+        template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle, typename ...Args>
+        decltype(auto) operator()(const Descriptor<StorageType, Handle>& desc, Args&&... args) const
+        {
+            return desc.Acquire<Type>(std::forward<Args>(args)...);
+        }
+    };
+    template<typename Type>
+    inline constexpr AcquireFunctor<Type> Acquire;
 }

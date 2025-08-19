@@ -4,7 +4,7 @@
 #include <bit>
 #include <cmath>
 
-#include <MyakishLibrary/Math/Common.hpp>
+#include <MyakishLibrary/Utility.hpp>
 #include <MyakishLibrary/Core.hpp>
 
 namespace myakish::ranges
@@ -17,7 +17,7 @@ namespace myakish::ranges
 
         constexpr static Size BitWidth = CHAR_BIT * sizeof(Underlying);
 
-        constexpr static Size IndexBits = math::Log2Ceil((unsigned)CHAR_BIT);
+        constexpr static Size IndexBits = Log2Ceil((unsigned)CHAR_BIT);
         constexpr static Size AddressBits = BitWidth - IndexBits;
 
         constexpr static Underlying IndexMask = ~Underlying{ 0 } >> AddressBits;
