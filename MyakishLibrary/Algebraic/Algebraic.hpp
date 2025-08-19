@@ -968,3 +968,15 @@ namespace myakish::functional
         return algebraic::Visit(std::forward<SumType>(sum), std::forward<Extension>(ext));
     }
 }
+
+namespace myakish::functional::shorthands
+{
+    inline constexpr auto $a0 = algebraic::Arg<0>;
+    inline constexpr auto $a1 = algebraic::Arg<1>;
+    inline constexpr auto $a2 = algebraic::Arg<2>;
+    inline constexpr auto $a3 = algebraic::Arg<3>;
+    inline constexpr auto $a4 = algebraic::Arg<4>;
+    inline constexpr auto $a5 = algebraic::Arg<5>;
+    inline constexpr auto $a6 = algebraic::Arg<6>;
+    inline constexpr auto $a7 = algebraic::Arg<7>;
+}

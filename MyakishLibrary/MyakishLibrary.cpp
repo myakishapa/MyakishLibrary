@@ -45,6 +45,7 @@ namespace alg = myakish::algebraic;
 
 using namespace hv::literals;
 using namespace std::literals;
+using namespace hof::shorthands;
 
 struct pes
 {
@@ -393,7 +394,7 @@ int main()
 
         std::vector<int> srcVec = { 1, 2, 3, 4, 5 };
 
-        auto rule = bst::FillRange(std::ranges::size, std::identity{}) >> bst::RepeatParser(bst::Int);
+        auto rule = bst::FillRange(std::ranges::size, hof::Identity) >> bst::RepeatParser(bst::Int);
 
         rule.IO(out | st2::WriteOnly, srcVec);
 
@@ -407,13 +408,8 @@ int main()
     }
 
     {
-        constexpr auto sum = [](int f, int s)
-            {
-                return f + s;
-            };
-
-        constexpr auto test = hof::RightFold(sum, 1);
-        constexpr auto test3 = hof::RightFold(sum, 1, 2, 3);
+        constexpr auto test = hof::RightFold(hof::Plus, 1);
+        constexpr auto test3 = hof::RightFold(hof::Plus, 1, 2, 3);
     }
 
     {
@@ -533,7 +529,7 @@ int main()
     {
         std::vector nums = { 1, 2, 3, 4, 5 };
 
-        auto lambda = hof::Complete(hof::Arg<0> % 2 == 0);
+        auto lambda = λ = ($0 % 2 == 0);
 
         auto even = std::ranges::count_if(nums, lambda);
         
@@ -543,9 +539,9 @@ int main()
     {
         alg::Variant<int, float> v = 1;
 
-        constexpr auto lambda = alg::Visit[hof::Arg<0>, IntOrNot];
-        constexpr auto lambda2 = IntOrNot[alg::Arg<0>];
-        constexpr auto lambda3 = hof::Invoke[IntOrNot, alg::Arg<0>];
+        constexpr auto lambda = alg::Visit[$0, IntOrNot];
+        constexpr auto lambda2 = IntOrNot[$a0];
+        constexpr auto lambda3 = hof::Invoke[IntOrNot, $a0];
 
         //hof::detail::IndirectAccumulate(IntOrNot, alg::detail::UnpackLambdaTransform(v));
 

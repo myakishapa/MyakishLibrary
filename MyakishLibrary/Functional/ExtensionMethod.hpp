@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <concepts>
 #include <tuple>
 
@@ -61,6 +61,17 @@ namespace myakish::functional
     template<myakish::Size Index>
     inline constexpr Placeholder<Index> Arg;
 
+    namespace shorthands
+    {
+        inline constexpr Placeholder<0> $0;
+        inline constexpr Placeholder<1> $1;
+        inline constexpr Placeholder<2> $2;
+        inline constexpr Placeholder<3> $3;
+        inline constexpr Placeholder<4> $4;
+        inline constexpr Placeholder<5> $5;
+        inline constexpr Placeholder<6> $6;
+        inline constexpr Placeholder<7> $7;
+    }
 
     template<typename Value>
     struct ConstantExpression : LambdaExpressionTag
@@ -351,12 +362,23 @@ namespace myakish::functional
     struct CompleteFunctor : ExtensionMethod, DisableLambdaOperatorsTag
     {
         template<LambdaExpressionConcept Expression>
-        constexpr auto operator()(Expression expression) const
+        constexpr auto operator()(Expression&& expression) const
         {
             return CompleteLambda(std::forward<Expression>(expression));
         }
+
+        template<LambdaExpressionConcept Expression>
+        constexpr auto operator=(Expression&& expression) const
+        {
+            return operator()(std::forward<Expression>(expression));
+        }
     };
     inline constexpr CompleteFunctor Complete;
+
+    namespace shorthands
+    {
+        inline constexpr auto λ = Complete;
+    }
 
     template<typename Transform, typename Continuation>
     struct TransformedContinuation
