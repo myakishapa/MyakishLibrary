@@ -1,177 +1,190 @@
 #pragma once
 
+#define NOMINMAX
+
 //#define BOOST_SPIRIT_X3_DEBUG
-#include <boost/spirit/home/x3.hpp>
-#include <boost/spirit/home/x3/support/ast/variant.hpp>
-#include <boost/fusion/include/adapt_struct.hpp>
-#include <boost/fusion/include/std_pair.hpp>
-#include <boost/fusion/include/io.hpp>
+#include <boost/parser/parser.hpp>
 
 #include <string>
 #include <iostream>
 #include <ranges>
 #include <map>
 #include <vector>
+#include <print>
+#include <format>
 
-namespace myakish::tree::parse::spirit
+#include <MyakishLibrary/Meta.hpp>
+
+namespace myakish::tree::parse
 {
-    namespace x3 = boost::spirit::x3;
-    
-    namespace pqs
+    namespace grammar
     {
-        x3::rule<class str, std::string> rule = "pqs";
+        namespace bp = boost::parser;
 
-        auto push = [](auto& ctx)
+        using namespace bp::literals;
+
+        template<auto Proj>
+        inline constexpr auto SetProjected = [](auto& ctx)
             {
-                x3::_val(ctx) += x3::_attr(ctx);
+                std::invoke(Proj, _val(ctx)) = _attr(ctx);
+            };
+        template<auto Proj>
+        inline constexpr auto SetProjectedTo = [](auto val)
+            {
+                return [=](auto& ctx)
+                    {
+                        std::invoke(Proj, _val(ctx)) = val;
+                    };
+            };
+        template<auto Proj>
+        inline constexpr auto PushProjected = [](auto& ctx)
+            {
+                std::invoke(Proj, _val(ctx)).push_back(_attr(ctx));
             };
 
-        auto const quoted_string =
-            x3::lexeme['"' > *(x3::char_[push] - '"') > '"'];
+        inline constexpr auto Set = SetProjected < std::identity{} > ;
 
-        auto const unquoted_string =
-            x3::lexeme[+(x3::alnum[push])];
+        inline constexpr auto StringParser = [](auto separator)
+            {
+                return bp::lexeme[*(bp::char_ - separator)];
+            };
 
-        auto const rule_def =
-            quoted_string | unquoted_string;
+        inline constexpr auto NonEmptyStringParser = [](auto separator)
+            {
+                return bp::lexeme[+(bp::char_ - separator)];
+            };
 
-        BOOST_SPIRIT_DEFINE(rule);
+
+        struct Line
+        {
+            int nestingLevel;
+            std::string name;
+            std::optional<std::string> explicitType = std::nullopt;
+            std::optional<std::string> value = std::nullopt;
+        };
+
+        bp::rule<struct LineParserTag, Line> LineParser = "line";
+
+        const auto IdentationUnitParser = "\t"_l | "    "_l;
+
+        bp::rule<struct IdentationParserTag, int> IdentationParser = "identation";
+
+        inline constexpr auto Increment = [](auto& ctx)
+            {
+                _val(ctx)++;
+            };
+
+
+
+        const auto IdentationParser_def = bp::lexeme[*(IdentationUnitParser[Increment])];
+
+        const auto TypeStartParser = ":"_l;
+
+        const auto ValueStartParser = ">>"_l;
+
+        const auto TypeParser = TypeStartParser >> (bp::quoted_string | NonEmptyStringParser(bp::ws | ValueStartParser))[SetProjected<&Line::explicitType>];
+
+        const auto ValueParser = ValueStartParser >> StringParser(bp::eol)[SetProjected<&Line::value>];
+
+        const auto LineValuesParser = (bp::quoted_string | NonEmptyStringParser(bp::ws | TypeStartParser | ValueStartParser))[SetProjected<&Line::name>] >>
+            -TypeParser >>
+            -ValueParser;
+
+        const auto LineParser_def =
+            IdentationParser[SetProjected<&Line::nestingLevel>] >>
+            bp::skip(bp::ws - bp::eol)[LineValuesParser] >>
+            -bp::eol;
+
+        BOOST_PARSER_DEFINE_RULES(LineParser, IdentationParser);
+
+        using File = std::vector<Line>;
+
+        const auto FileParser = *LineParser;
+
+        std::optional<File> Parse(bp::parsable_range auto&& range, bp::trace trace = bp::trace::off)
+        {
+            return bp::parse(range, FileParser, trace);
+        }
     }
 
-    namespace ObjectParser
+    namespace ast
     {
-        using Type = std::string;
-        using ID = std::string;
-        using DataStorage = std::string;
+        struct AST;
 
-        struct Object;
+        using Entries = std::map<std::string, AST>;
 
-        struct SingleEntry
+        struct AST
         {
-            Type type;
-            DataStorage data;
+            std::optional<std::string> value;
+            std::optional<std::string> explicitType;
+
+            Entries entries;
         };
 
-        struct ArrayEntry
+        Entries Parse(auto& begin, const auto& end, int currentNestingLevel = 0)
         {
-            Type type;
-            std::vector<DataStorage> data;
-        };
+            Entries result;
 
-        struct ObjectArrayEntry
-        {
-            std::vector<Object> data;
-        };
+            Entries::iterator last{};
 
-        struct Object
-        {
-            ID currentId;
+            while (begin != end)
+            {
+                grammar::Line line = *begin;
 
-            std::map<ID, Object> children;
-            std::map<ID, ObjectArrayEntry> objectArrayEntries;
+                if (line.nestingLevel > currentNestingLevel)
+                {
+                    last->second.entries.insert_range(Parse(begin, end, currentNestingLevel + 1));
+                }
+                else if (line.nestingLevel < currentNestingLevel) return result;
+                else
+                {              
+                    AST ast{};
 
-            std::map<ID, SingleEntry> singleEntries;
-            std::map<ID, ArrayEntry> arrayEntries;
-        };
+                    ast.value = line.value;
+                    ast.explicitType = line.explicitType;
 
-        std::ostream& operator<<(std::ostream& out, const Object& obj)
-        {
-            std::print(out, "Object ({}, {}, {})", obj.children.size(), obj.singleEntries.size(), obj.arrayEntries.size());
-            return out;
+                    auto [it, inserted] = result.emplace(std::move(line).name, std::move(ast));
+                    last = it;
+
+                    begin++;
+                }
+            }
+
+            return result;
         }
 
-        std::ostream& operator<<(std::ostream& out, const SingleEntry& entry)
+        namespace detail
         {
-            std::print(out, "Single Entry ({}, {})", entry.type, entry.data);
-            return out;
+            template<typename Type>
+            std::string FormatOptional(const std::optional<Type>& opt)
+            {
+                return opt.has_value() ? std::format("{}", opt.value()) : std::string("nullopt");
+            }
         }
 
-        std::ostream& operator<<(std::ostream& out, const ArrayEntry& entry)
+        void DebugPrint(Entries entries, std::string prefix = "")
         {
-            std::print(out, "Array Entry ({}, {})", entry.type, entry.data);
-            return out;
+            for (auto&& [name, entry] : entries)
+            {
+                std::print("{}{}", prefix, name);
+                if (entry.explicitType) std::print(": {}", *entry.explicitType);
+                if (entry.value) std::print(" >> {}", *entry.value);
+                
+                std::println();
+
+                DebugPrint(entry.entries, prefix + "    ");
+            }
         }
 
-        auto setType = [](auto& ctx)
-            {
-                x3::_val(ctx).type = x3::_attr(ctx);
-            };
-
-        auto setData = [](auto& ctx)
-            {
-                x3::_val(ctx).data = x3::_attr(ctx);
-            };
-        auto pushData = [](auto& ctx)
-            {
-                x3::_val(ctx).data.push_back(x3::_attr(ctx));
-            };
-
-        x3::rule<struct objectParser, Object> rule = "Object";
-
-        x3::rule<struct objectArrayParser, ObjectArrayEntry> objectArrayEntryRule = "Object Array Entry";
-
-        x3::rule<struct singleEntryParser, SingleEntry> singleEntryRule = "Single Entry";
-
-        x3::rule<struct arrayEntryParser, ArrayEntry> arrayEntryRule = "Array Entry";
-
-        auto const TypeParser = pqs::rule[setType];
-
-        auto const singleEntryRule_def = TypeParser >> ':' >> pqs::rule[setData];
-        auto const arrayEntryRule_def = TypeParser >> x3::char_(':') >> '[' >> (pqs::rule[pushData] % ',') >> ']';
-
-        auto pushSingle = [](auto& ctx)
-            {
-                auto&& val = x3::_val(ctx);
-                val.singleEntries[val.currentId] = x3::_attr(ctx);
-            };
-        auto pushArray = [](auto& ctx)
-            {
-                auto&& val = x3::_val(ctx);
-                val.arrayEntries[val.currentId] = x3::_attr(ctx);
-            };
-        auto pushObject = [](auto& ctx)
-            {
-                auto&& val = x3::_val(ctx);
-                val.children[val.currentId] = x3::_attr(ctx);
-            };
-        auto pushObjectArray = [](auto& ctx)
-            {
-                auto&& val = x3::_val(ctx);
-                val.objectArrayEntries[val.currentId] = x3::_attr(ctx);
-            };
-
-        auto setCurrentId = [](auto& ctx)
-            {
-                x3::_val(ctx).currentId = x3::_attr(ctx);
-            };
-
-        auto const currentIdParser = pqs::rule[setCurrentId];
-
-        auto const wrappedObject = x3::char_('{') >> rule[pushObject] >> x3::char_('}');
-
-        auto const rule_def = 
-            ((currentIdParser >> x3::char_(':') >> (wrappedObject | singleEntryRule[pushSingle] | arrayEntryRule[pushArray] | objectArrayEntryRule[pushObjectArray])) % x3::char_(','));
-
-        auto pushObjectToArray = [](auto& ctx)
-            {
-                auto&& val = x3::_val(ctx);
-                val.data.push_back(x3::_attr(ctx));
-            };
-
-        auto const objectArrayEntryRule_def =
-            x3::char_('[') >> ((x3::char_('{') >> rule[pushObjectToArray] >> x3::char_('}')) % x3::char_(',')) >> x3::char_(']');
-
-
-        BOOST_SPIRIT_DEFINE(rule, singleEntryRule, arrayEntryRule, objectArrayEntryRule);
-
-        template<std::ranges::input_range Range>
-        Object Parse(Range&& r)
+        Entries Parse(meta::RangeOfConcept<grammar::Line> auto&& range)
         {
-            Object obj;
+            auto begin = std::ranges::begin(range);
+            return Parse(begin, std::ranges::end(range), 0);
+        }
 
-            auto result = x3::phrase_parse(std::ranges::begin(r), std::ranges::end(r), ObjectParser::rule, x3::space, obj);
-
-            return obj;
+        Entries Parse(boost::parser::parsable_range auto&& range)
+        {
+            return Parse(grammar::Parse(range).value());
         }
     }
 }

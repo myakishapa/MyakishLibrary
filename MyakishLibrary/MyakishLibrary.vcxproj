@@ -109,7 +109,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\libs\boost_1_86_0;C:\Users\User\source\repos\MyakishLibrary</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\libs\boost_1_88_0;C:\Users\User\source\repos\MyakishLibrary</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

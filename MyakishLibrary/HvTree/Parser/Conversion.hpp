@@ -5,19 +5,25 @@
 
 namespace myakish::tree::parse
 {
-    /*template<DataStorage DataType>
-    struct StringParserStruct : Converter<DataType>
+    struct IntParserType
     {
-        virtual void Convert(Descriptor<DataType> dst, SingleData data) const override
+        bool MatchType(std::string_view type) const
         {
-            dst = data;
+            return type == "int";
         }
-        virtual void ConvertArray(Descriptor<DataType> dst, ArrayData data) const override
+        bool MatchValue(std::string_view value) const
         {
+            return boost::parser::parse(value, boost::parser::int_).has_value();
+        }
 
+        void ParseInto(const auto& desc, std::string_view value) const
+        {
+            desc = *boost::parser::parse(value, boost::parser::int_);
+        }
+        void ParseInto(const auto& desc, std::string_view type, std::string_view value) const
+        {
+            desc = *boost::parser::parse(value, boost::parser::int_);
         }
     };
-
-    template<DataStorage DataType>
-    StringParserStruct<DataType> StringParser;*/
+    inline constexpr IntParserType IntParser;
 }

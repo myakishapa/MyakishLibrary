@@ -3,7 +3,9 @@
 #include <MyakishLibrary/HvTree/HvTree.hpp>
 
 #include <MyakishLibrary/HvTree/Parser/Spirit.hpp>
-#include <MyakishLibrary/HvTree/Handle/CombinedHashHandle.hpp>
+#include <MyakishLibrary/HvTree/Handle/StringWrapper.hpp>
+
+#include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 
 #include <map>
 #include <ranges>
@@ -15,81 +17,41 @@
 
 namespace myakish::tree::parse
 {
-    /*using SingleData = std::string_view;
-    using ArrayData = std::span<const std::string>;
-
-    template<DataStorage DataType>
-    struct Converter
+    template<typename Type>
+    concept Parser = requires(Type parser, std::string_view type, std::string_view value)
     {
-        virtual void Convert(Descriptor<DataType> dst, SingleData data) const = 0;
-        virtual void ConvertArray(Descriptor<DataType> dst, ArrayData data) const = 0;
+        { parser.MatchType(type) } -> std::convertible_to<bool>;
+        { parser.MatchValue(value) } -> std::convertible_to<bool>;
     };
 
-    template<DataStorage DataType, typename HandleConverter>
-    class Parser
+    struct ParseIntoFunctor : functional::ExtensionMethod
     {
-    public:
-
-        using Handle = DataType::Handle;
-        using Type = spirit::ObjectParser::Type;
-
-        using ConverterRef = const Converter<DataType>&;
-
-    private:
-
-        std::map<Type, ConverterRef> converters;
-
-    public:
-
-        template<std::ranges::input_range Range>
-        void Parse(Descriptor<DataType> dst, Range&& src)
+        template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle, Parser... Parsers>
+        void operator()(const Descriptor<StorageType, Handle>& desc, const ast::AST& source, const Parsers&... parsers) const
         {
-            auto obj = spirit::ObjectParser::Parse(std::forward<Range>(src));
-            Parse(dst, obj);
-        }
-
-        void Parse(Descriptor<DataType> dst, const spirit::ObjectParser::Object& obj)
-        {
-            for (const auto& [id, entry] : obj.singleEntries)
-            {
-                auto& conv = converters.at(entry.type);
-                conv.Convert(dst[HandleConverter::Convert(id)], entry.data);
-            }
-
-            for (const auto& [id, entry] : obj.arrayEntries)
-            {
-                auto& conv = converters.at(entry.type);
-                conv.ConvertArray(dst[HandleConverter::Convert(id)], std::span(entry.data));
-            }
-
-            for (const auto& [id, entry] : obj.children)
-            {
-                Parse(dst[HandleConverter::Convert(id)], entry);
-            }
-
-            for (const auto& [id, entry] : obj.objectArrayEntries)
-            {
-                auto subobject = dst[HandleConverter::Convert(id)];
-                myakish::Size size = entry.data.size();
-                for (myakish::Size i = 0; i < size; i++)
+            auto TryParse = [&](Parser auto&& parser)
                 {
-                    Parse(subobject[ArrayAccessor{ i }], entry.data[i]);
-                }
-                subobject[ArraySize] = size;
-            }
+                    if (source.explicitType)
+                    {
+                        if (parser.MatchType(*source.explicitType)) parser.ParseInto(desc, *source.explicitType, *source.value);
+                    }
+                    else
+                    {
+                        if (parser.MatchValue(*source.value)) parser.ParseInto(desc, *source.value);
+                    }
+                };
+
+            if (source.value) (TryParse(parsers), ...);
+
+            operator()(desc, source.entries, parsers...);
         }
 
-        void AddConverter(Type type, ConverterRef ref)
+        template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle, Parser... Parsers>
+        void operator()(const Descriptor<StorageType, Handle>& desc, const ast::Entries& source, const Parsers&... parsers) const
         {
-            converters.emplace(type, ref);
+            for (auto&& [name, entry] : source)
+                operator()(desc[handle::StringWrapper{ name }], entry, parsers...);
         }
     };
-
-    struct HashHandleConverter
-    {
-        static handle::CombinedHash Convert(std::string_view str)
-        {
-            return handle::CombinedHash{ hc::Hash(str) };
-        }
-    };*/
+    inline constexpr ParseIntoFunctor ParseInto; 
 }

@@ -617,10 +617,10 @@ namespace myakish::functional
     template<typename Type>
     concept PipelinableTo = std::derived_from<std::remove_cvref_t<Type>, ExtensionMethod> || meta::InstanceOfConcept<Type, ExtensionClosure> || meta::InstanceOfConcept<Type, ExtensionMethod::PartialApplier>;
 
-    template<typename Arg, PipelinableTo Extension>
+    template<typename Arg, PipelinableTo Extension> requires std::invocable<Extension&&, Arg&&>
     constexpr decltype(auto) operator|(Arg&& arg, Extension&& ext)
     {
-        return std::forward<Extension>(ext)(std::forward<Arg>(arg));
+        return std::invoke(std::forward<Extension>(ext), std::forward<Arg>(arg));
     }
     
 

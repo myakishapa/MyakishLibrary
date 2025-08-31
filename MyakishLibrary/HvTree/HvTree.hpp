@@ -286,11 +286,24 @@ namespace myakish::tree
     struct AcquireFunctor : functional::ExtensionMethod
     {
         template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle, typename ...Args>
-        decltype(auto) operator()(const Descriptor<StorageType, Handle>& desc, Args&&... args) const
+        Type operator()(const Descriptor<StorageType, Handle>& desc, Args&&... args) const
         {
             return desc.Acquire<Type>(std::forward<Args>(args)...);
         }
     };
     template<typename Type>
     inline constexpr AcquireFunctor<Type> Acquire;
+
+    template<typename Type>
+    struct AcquireOrFunctor : functional::ExtensionMethod
+    {
+        template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle, typename ...Args>
+        Type operator()(const Descriptor<StorageType, Handle>& desc, Type defaultValue = {}, Args&&... args) const
+        {
+            return desc.Exists() ? desc.Acquire<Type>(std::forward<Args>(args)...) : defaultValue;
+        }
+    };
+    template<typename Type>
+    inline constexpr AcquireOrFunctor<Type> AcquireOr;
+
 }

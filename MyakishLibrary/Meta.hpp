@@ -410,4 +410,8 @@ namespace myakish::meta
 
     template<typename Type, template<typename> typename Predicate, template<typename> typename Transform = std::remove_cvref>
     concept UnreferencesToConcept = Predicate<typename Transform<Type>::type>::value;
+
+
+    template<typename Type, typename RangeValue>
+    concept RangeOfConcept = std::ranges::range<Type> && std::same_as<std::ranges::range_value_t<Type>, RangeValue>;
 }

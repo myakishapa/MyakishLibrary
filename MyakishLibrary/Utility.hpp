@@ -12,10 +12,11 @@
 
 #include <MyakishLibrary/Meta.hpp>
 #include <MyakishLibrary/Core.hpp>
+#include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 
 namespace myakish
 {
-    struct FactorialFunctor
+    struct FactorialFunctor : functional::ExtensionMethod
     {
         template<std::integral Number>
         constexpr Number operator()(Number n) const
@@ -28,7 +29,7 @@ namespace myakish
     inline constexpr FactorialFunctor Factorial;
 
 
-    struct ChooseFunctor
+    struct ChooseFunctor : functional::ExtensionMethod
     {
         template<std::integral Number>
         constexpr Number operator()(Number n, Number k) const
@@ -38,7 +39,7 @@ namespace myakish
     };
     inline constexpr ChooseFunctor Choose;
 
-    struct Log2CeilFunctor
+    struct Log2CeilFunctor : functional::ExtensionMethod
     {
         template<std::unsigned_integral Number>
         constexpr Number operator()(Number n) const
@@ -49,7 +50,7 @@ namespace myakish
     inline constexpr Log2CeilFunctor Log2Ceil;
 
 
-    struct AsBytePtrFunctor
+    struct AsBytePtrFunctor : functional::ExtensionMethod
     {
         template<typename Type>
         auto operator()(Type* ptr) const
@@ -61,7 +62,7 @@ namespace myakish
     inline constexpr AsBytePtrFunctor AsBytePtr;
 
 
-    struct ReadFileFunctor
+    struct ReadFileFunctor : functional::ExtensionMethod
     {
         auto operator()(const std::filesystem::path& path) const
         {
@@ -77,7 +78,7 @@ namespace myakish
     inline constexpr ReadFileFunctor ReadFile;
 
 
-    struct ReadTextFileFunctor
+    struct ReadTextFileFunctor : functional::ExtensionMethod
     {
         auto operator()(const std::filesystem::path& path) const
         {
@@ -92,7 +93,7 @@ namespace myakish
     };
     inline constexpr ReadTextFileFunctor ReadTextFile;
 
-    struct FormatByteSizeFunctor
+    struct FormatByteSizeFunctor : functional::ExtensionMethod
     {
         auto operator()(Size size) const
         {
@@ -116,7 +117,7 @@ namespace myakish
     inline constexpr FormatByteSizeFunctor FormatByteSize;
 
 
-    struct CollatzWeylPRNGFunctor
+    struct CollatzWeylPRNGFunctor : functional::ExtensionMethod
     {
         template<std::integral Number>
         std::generator<bool> operator()(Number x, Number weyl, Number s) const
@@ -135,7 +136,7 @@ namespace myakish
 
 
     template<typename To>
-    struct BitCastFunctor
+    struct BitCastFunctor : functional::ExtensionMethod
     {
         template<typename ...Args>
         constexpr To operator()(Args... args) const
@@ -148,7 +149,7 @@ namespace myakish
     inline constexpr BitCastFunctor<To> BitCast;
 
 
-    struct HashFunctor
+    struct HashFunctor : functional::ExtensionMethod
     {
         constexpr std::uint64_t operator()(std::string_view str) const
         {
@@ -205,7 +206,7 @@ namespace myakish
     inline constexpr HashFunctor Hash;
 
 
-    struct HashCombineFunctor
+    struct HashCombineFunctor : functional::ExtensionMethod
     {
         constexpr std::uint64_t operator()(std::uint64_t f, std::uint64_t s) const
         {
@@ -217,7 +218,7 @@ namespace myakish
 
     
     template<typename Type>
-    struct FromCharsFunctor
+    struct FromCharsFunctor : functional::ExtensionMethod
     {
         template<typename ...Args>
         constexpr Type operator()(std::string_view view) const
@@ -263,7 +264,7 @@ namespace myakish
     };
 
 
-    struct UnsignFunctor
+    struct UnsignFunctor : functional::ExtensionMethod
     {
         template<std::integral Type>
         constexpr auto operator()(Type num) const
@@ -273,7 +274,7 @@ namespace myakish
     };
     inline constexpr UnsignFunctor Unsign;
 
-    struct PaddingFunctor
+    struct PaddingFunctor : functional::ExtensionMethod
     {
         template<std::integral Type>
         constexpr Type operator()(Type value, Type alignment) const
@@ -282,4 +283,27 @@ namespace myakish
         }
     };
     inline constexpr PaddingFunctor Padding;
+    
+    struct AsSizeFunctor : functional::ExtensionMethod
+    {
+        template<std::convertible_to<Size> Type>
+        constexpr auto operator()(Type&& value) const
+        {
+            return static_cast<Size>(std::forward<Type>(value));
+        }
+    };
+    inline constexpr AsSizeFunctor AsSize;   
+
+    struct AsBytesFunctor : functional::ExtensionMethod
+    {
+        template<std::ranges::contiguous_range Range,
+            typename SpanType = std::span<std::conditional_t<std::ranges::constant_range<Range>, const std::byte, std::byte>>> 
+            requires meta::TriviallyCopyableConcept<std::ranges::range_value_t<Range>>
+        constexpr SpanType operator()(Range&& range) const
+        {
+            return SpanType(std::ranges::data(range) | AsBytePtr, std::ranges::size(range) * sizeof(std::ranges::range_value_t<Range>));
+        }
+    };
+    inline constexpr AsBytesFunctor AsBytes;
+
 }

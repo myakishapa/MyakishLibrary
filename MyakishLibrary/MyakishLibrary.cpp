@@ -26,6 +26,8 @@
 #include <MyakishLibrary/HvTree/Handle/StringWrapper.hpp>
 #include <MyakishLibrary/HvTree/Data/DedicatedAllocation.hpp>
 #include <MyakishLibrary/HvTree/Array/Array.hpp>
+#include <MyakishLibrary/HvTree/Parser/Parser.hpp>
+#include <MyakishLibrary/HvTree/Parser/Conversion.hpp>
 
 #include <MyakishLibrary/DependencyGraph/Graph.hpp>
 
@@ -213,7 +215,8 @@ int main()
 
         tree[PesHandle("apa")]["pes"_sk] = 1337;
 
-        std::println("{}", tree["apa"_sk / "pes"_sk].Acquire<int>());
+        std::println("{}", tree["apa"_sk / "pes"_sk] | hv::Acquire<int>);
+        std::println("{}", tree["apa"_sk / "hvosti"_sk] | hv::AcquireOr<int>);
     }
 
     {
@@ -544,7 +547,7 @@ int main()
         constexpr auto lambda3 = hof::Invoke[IntOrNot, $a0];
 
         //hof::detail::IndirectAccumulate(IntOrNot, alg::detail::UnpackLambdaTransform(v));
-
+        
         lambda(v);
         lambda2(v);
         lambda3(v);
@@ -554,6 +557,22 @@ int main()
 
         //v | alg::Visit[Func];
 
+    }
+
+    {
+        auto file = myakish::ReadTextFile("myakishParserTest.hvr");
+
+        auto test1 = hv::parse::grammar::Parse(file, boost::parser::trace::off);
+        auto test2 = hv::parse::ast::Parse(file);
+
+        hv::parse::ast::DebugPrint(test2);
+
+        PesData data;
+        hv::Descriptor<PesData, PesHandle> tree(data);
+
+        hv::parse::ParseInto(tree, test2, hv::parse::IntParser);
+
+        std::println();
     }
 }
 
