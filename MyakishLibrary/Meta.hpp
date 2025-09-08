@@ -307,6 +307,20 @@ namespace myakish::meta
     struct QuotedAnyOf : AnyOf<Quoted::template Function, List> {};
 
 
+    template<template<typename> typename Predicate, typename NonList>
+    struct AllOf : Undefined {};
+
+    template<template<typename> typename Predicate>
+    struct AllOf<Predicate, TypeList<>> : ReturnValue<true> {};
+
+    template<template<typename> typename Predicate, typename First, typename ...Rest>
+    struct AllOf<Predicate, TypeList<First, Rest...>> : ReturnValue<Predicate<First>::value && AllOf<Predicate, TypeList<Rest...>>::value> {};
+
+    template<typename Quoted, typename List>
+    struct QuotedAllOf : AllOf<Quoted::template Function, List> {};
+
+
+
     template<template<typename> typename BaseFunction>
     struct Not
     {

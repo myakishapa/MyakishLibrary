@@ -135,4 +135,15 @@ namespace myakish::functional::inline higher_order
         }
     };
     inline constexpr InvokeFunctor Invoke;
+
+
+    struct IfFunctor : ExtensionMethod
+    {
+        template<typename True, typename False>
+        constexpr decltype(auto) operator()(bool condition, True&& trueValue, False&& falseValue) const
+        {
+            return condition ? std::forward<True>(trueValue) : std::forward<False>(falseValue);
+        }
+    };
+    inline constexpr IfFunctor If;
 }

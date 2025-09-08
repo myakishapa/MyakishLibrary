@@ -329,7 +329,7 @@ namespace myakish::binary_serialization_suite
                         };
                 };
 
-            attribute = std::forward<ArgAttribute>(attribute) | algebraic::Cast<Attribute> | algebraic::Apply(parsers | algebraic::Transform[ParseWith], *algebraic::Multitransform) | algebraic::Cast<std::remove_cvref_t<ArgAttribute>>;
+            attribute = std::forward<ArgAttribute>(attribute) | algebraic::Cast<Attribute> | algebraic::Apply(parsers | algebraic::Map[ParseWith], *algebraic::Map) | algebraic::Cast<std::remove_cvref_t<ArgAttribute>>;
         }
     };
 

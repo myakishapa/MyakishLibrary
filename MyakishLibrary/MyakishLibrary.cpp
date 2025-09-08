@@ -333,7 +333,7 @@ int main()
 
         auto zipWith3 = [](auto arg) { return std::tuple(arg, 3); };
 
-        auto result = var | Multitransform[intToStr, floatToInt, transformLong] | Transform[zipWith3];
+        auto result = var | Map[intToStr, floatToInt, transformLong] | Map[zipWith3];
 
         auto tuple = std::tuple(1, 2.f, "sfd"s);
 
@@ -474,7 +474,7 @@ int main()
 
             auto zipWith3 = [](auto arg) { return std::tuple(arg, 3); };
 
-            auto result = var | alg::Multitransform[intToStr, floatToInt, transformLong] | alg::Transform[zipWith3];
+            auto result = var | alg::Map[intToStr, floatToInt, transformLong] | alg::Map[zipWith3];
 
             result | alg::Visit[test];
 
@@ -527,6 +527,8 @@ int main()
             };
 
         meta::ForEach<List>(Func);
+
+        using test = alg::detail::TypeValueToFromIndex<meta::ValueType<1>>::type;
     }
 
     {
@@ -536,6 +538,16 @@ int main()
 
         auto even = std::ranges::count_if(nums, lambda);
         
+        std::println();
+    }
+
+    {
+        std::vector nums = { 1, 2, 3, 4, 5 };
+
+        auto lambda = λ = hof::If[$0 >= 3, $0 % 2 == 0, $0 % 2 == 1];
+
+        auto even = std::ranges::count_if(nums, lambda);
+
         std::println();
     }
 
