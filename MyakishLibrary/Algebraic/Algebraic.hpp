@@ -12,29 +12,9 @@
 namespace myakish::algebraic
 {
     template<Size Index>
-    struct FromIndexType : meta::ReturnValue<Index> 
-    {
-        constexpr FromIndexType() = default;
-        constexpr FromIndexType(meta::ValueType<Index>) {}
-
-        constexpr operator meta::ValueType<Index>() const
-        {
-            return{};
-        }
-    };
-    template<Size Index>
-    FromIndexType(meta::ValueType<Index>) -> FromIndexType<Index>;
+    using FromIndexType = meta::ValueType<Index>;
     template<Size Index>
     inline constexpr FromIndexType<Index> FromIndex;
-
-    namespace detail
-    {
-        template<typename NonValue>
-        struct TypeValueToFromIndex : meta::Undefined {};
-
-        template<typename Type, template<Type> typename Template, Type Value> requires std::convertible_to<Type, Size>
-        struct TypeValueToFromIndex<Template<Value>> : meta::ReturnType<FromIndexType<Value>> {};
-    }
 
     template<typename Type>
     inline constexpr bool EnableAlgebraicFor = false;
@@ -222,9 +202,7 @@ namespace myakish::algebraic
         {
             using Indices = meta::IntegerSequence<Size, LastIndex>::type;
 
-            using TrueIndices = meta::Apply<detail::TypeValueToFromIndex, Indices>::type;
-
-            using Results = meta::QuotedApply<meta::LeftCurry<std::invoke_result, Function>, TrueIndices>::type;
+            using Results = meta::QuotedApply<meta::LeftCurry<std::invoke_result, Function>, Indices>::type;
 
             using type = meta::RightFold<SameOrUndefined, Results>::type;
         };
@@ -263,7 +241,7 @@ namespace myakish::algebraic
         VisitTarget(Type&&, Function&&) -> VisitTarget<Type, Function>;
 
         template<SumConcept Type, typename Function>
-        decltype(auto) operator()(Type&& sum, Function&& function) const requires std::invocable<VisitByIndexFunctor, VisitTarget<Type, Function>>
+        decltype(auto) operator()(Type&& sum, Function&& function) const requires std::invocable<VisitByIndexFunctor, Type, VisitTarget<Type, Function>>
         {
             return VisitByIndex(std::forward<Type>(sum), VisitTarget(std::forward<Type>(sum), std::forward<Function>(function)));
         }
