@@ -94,6 +94,10 @@ namespace myakish::meta
         };
     };
     
+    template<typename Quoted>
+    struct QuotedLiftToType : LiftToType<Quoted::template Function> {};
+
+
     template<typename Type>
     struct ValueProjection : Type {};
 
@@ -227,6 +231,25 @@ namespace myakish::meta
 
 
 
+
+    template<template<typename, typename> typename Func, typename Init, typename NonList>
+    struct ExclusiveScan : Undefined {};
+
+    template<template<typename, typename> typename Func, typename Init, typename First, typename ...Rest>
+    struct ExclusiveScan<Func, Init, TypeList<First, Rest...>>
+    {
+        using type = Concat<TypeList<Init>, typename ExclusiveScan<Func, typename Func<Init, First>::type, TypeList<Rest...>>::type>::type;
+    };
+
+    template<template<typename, typename> typename Func, typename Init>
+    struct ExclusiveScan<Func, Init, TypeList<>> : ReturnType<TypeList<Init>> {};
+
+    template<typename Quoted, typename Init, typename List>
+    struct QuotedExclusiveScan : ExclusiveScan<Quoted::template Function, Init, List> {};
+
+
+
+
     template<Size Count, typename Type>
     struct Repeat : Concat<TypeList<Type>, typename Repeat<Count - 1, Type>::type> {};
 
@@ -318,6 +341,47 @@ namespace myakish::meta
 
     template<typename Quoted, typename List>
     struct QuotedAllOf : AllOf<Quoted::template Function, List> {};
+
+
+    template<template<typename> typename Predicate, typename NonList>
+    struct NoneOf : Undefined {};
+
+    template<template<typename> typename Predicate>
+    struct NoneOf<Predicate, TypeList<>> : ReturnValue<true> {};
+
+    template<template<typename> typename Predicate, typename First, typename ...Rest>
+    struct NoneOf<Predicate, TypeList<First, Rest...>> : ReturnValue<!Predicate<First>::value && NoneOf<Predicate, TypeList<Rest...>>::value> {};
+
+    template<typename Quoted, typename List>
+    struct QuotedNoneOf : NoneOf<Quoted::template Function, List> {};
+
+
+
+    template<typename NonList, template<typename, typename> typename Comparator = std::is_same>
+    struct Unique : Undefined {};
+
+    template<template<typename, typename> typename Comparator, typename First, typename ...Rest>
+    struct Unique<TypeList<First, Rest...>, Comparator>
+    {
+    private:
+
+        using Predicate = LeftCurry<Comparator, First>;
+
+        using begin = std::conditional_t<QuotedNoneOf<Predicate, TypeList<Rest...>>::value, TypeList<First>, TypeList<>>;
+
+    public:
+
+        using type = Concat<begin, typename Unique<TypeList<Rest...>, Comparator>::type>::type;
+    };
+
+    template<template<typename, typename> typename Comparator>
+    struct Unique<TypeList<>, Comparator>
+    {
+        using type = TypeList<>;
+    };
+
+    template<typename Quoted, typename List>
+    struct QuotedUnique : Unique<List, Quoted::template Function> {};
 
 
 
@@ -414,11 +478,11 @@ namespace myakish::meta
     template<typename List>
     inline constexpr ForEachFunctor<List> ForEach;
 
-    template<auto Predicate>
-    struct ConstexprPredicateMetafunction
+    template<auto ConstexprFunction>
+    struct IntoMetafunction
     {
         template<typename ...Types>
-        struct Function : ReturnValue<std::invoke(Predicate, TypeValue<Types>...)> {};
+        struct Function : ReturnValue<std::invoke(ConstexprFunction, Types::value...)> {};
     };
 
 

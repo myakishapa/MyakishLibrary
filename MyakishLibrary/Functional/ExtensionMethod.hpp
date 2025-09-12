@@ -36,24 +36,40 @@ namespace myakish::functional
 
 
         template<typename Invocable, typename ...Types, myakish::Size ...Indices> requires(std::invocable<Invocable&&, Types&&...>)
-        constexpr decltype(auto) ForwardingApply(Invocable&& invocable, const std::tuple<Types...>& tuple, std::integer_sequence<myakish::Size, Indices...>)
+            constexpr decltype(auto) ForwardingApply(Invocable&& invocable, const std::tuple<Types...>& tuple, std::integer_sequence<myakish::Size, Indices...>)
         {
             return std::invoke(std::forward<Invocable>(invocable), ForwardFromTuple<Indices>(tuple)...);
         }
 
         template<typename Invocable, typename ...Types> requires(std::invocable<Invocable&&, Types&&...>)
-        constexpr decltype(auto) ForwardingApply(Invocable&& invocable, const std::tuple<Types...>& tuple)
+            constexpr decltype(auto) ForwardingApply(Invocable&& invocable, const std::tuple<Types...>& tuple)
         {
             return ForwardingApply(std::forward<Invocable>(invocable), tuple, std::make_integer_sequence<myakish::Size, sizeof...(Types)>{});
         }
+
+        /*template<myakish::Size Start, myakish::Size Count, typename Invocable, typename ...Types> requires(std::invocable<Invocable&&, Types&&...>)
+        constexpr decltype(auto) ForwardingApply(Invocable&& invocable, const std::tuple<Types...>& tuple)
+        {
+            return ForwardingApply(std::forward<Invocable>(invocable), tuple, std::make_integer_sequence<myakish::Size, sizeof...(Types)>{});
+        }*/
     }
+
+    struct LambdaMarkerType : LambdaExpressionTag
+    {
+        template<std::invocable Invocable, typename ArgsTuple>
+        constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple& argsTuple) const
+        {
+            return std::invoke(std::forward<Invocable>(invocable));
+        }
+    };
+    inline constexpr LambdaMarkerType LambdaMarker;
 
 
     template<myakish::Size Index>
     struct Placeholder : LambdaExpressionTag
     {
         template<typename Invocable, typename ArgsTuple> requires(0 <= Index && Index < std::tuple_size_v<std::remove_cvref_t<ArgsTuple>> && std::invocable<Invocable&&, std::tuple_element_t<Index, ArgsTuple>>)
-        constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple& argsTuple) const
+            constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple& argsTuple) const
         {
             return std::invoke(std::forward<Invocable>(invocable), detail::ForwardFromTuple<Index>(argsTuple));
         }
@@ -61,8 +77,21 @@ namespace myakish::functional
     template<myakish::Size Index>
     inline constexpr Placeholder<Index> Arg;
 
+    struct RangePlaceholder : LambdaExpressionTag
+    {
+        template<typename Invocable, typename ArgsTuple>
+        constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple& argsTuple) const requires requires { detail::ForwardingApply(std::forward<Invocable>(invocable), argsTuple); }
+        {
+            return detail::ForwardingApply(std::forward<Invocable>(invocable), argsTuple);
+        }
+    };
+    inline constexpr RangePlaceholder Args;
+
+
     namespace shorthands
     {
+        inline constexpr LambdaMarkerType $e;
+
         inline constexpr Placeholder<0> $0;
         inline constexpr Placeholder<1> $1;
         inline constexpr Placeholder<2> $2;
@@ -71,6 +100,8 @@ namespace myakish::functional
         inline constexpr Placeholder<5> $5;
         inline constexpr Placeholder<6> $6;
         inline constexpr Placeholder<7> $7;
+
+        inline constexpr RangePlaceholder $r;
     }
 
     template<typename Value>

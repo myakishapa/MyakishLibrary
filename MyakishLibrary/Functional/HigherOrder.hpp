@@ -2,6 +2,7 @@
 #include <concepts>
 #include <tuple>
 #include <ranges>
+#include <bit>
 
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 
@@ -146,4 +147,36 @@ namespace myakish::functional::inline higher_order
         }
     };
     inline constexpr IfFunctor If;
+
+
+    struct BitWidthFunctor : ExtensionMethod
+    {
+        template<std::unsigned_integral Number>
+        constexpr int operator()(Number num) const
+        {
+            return std::bit_width(num);
+        }
+    };
+    inline constexpr BitWidthFunctor BitWidth;
+
+    struct MaxFunctor : ExtensionMethod
+    {
+        template<typename Type>
+        constexpr const Type& operator()(const Type& f, const Type& s) const
+        {
+            return std::max(f, s);
+        }
+    };
+    inline constexpr MaxFunctor Max;
+
+    struct MinFunctor : ExtensionMethod
+    {
+        template<typename Type>
+        constexpr const Type& operator()(const Type& f, const Type& s) const
+        {
+            return std::min(f, s);
+        }
+    };
+    inline constexpr MinFunctor Min;
+
 }

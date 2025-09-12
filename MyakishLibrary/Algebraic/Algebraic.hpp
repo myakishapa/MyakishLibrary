@@ -732,6 +732,7 @@ namespace myakish::algebraic
 
 
 
+
     namespace detail
     {
         template<typename ReturnType, ProductConcept Type, ProductConcept Functions, Size... Indices> requires (Count<Type&&> == Count<Functions&&>)
@@ -936,6 +937,125 @@ namespace myakish::algebraic
         }
     };
     inline constexpr UnpackFunctor Unpack;
+
+
+
+    struct FlattenFunctor : functional::ExtensionMethod
+    {
+        template<typename Type>
+        struct UnderlyingProjection : meta::ReturnType<meta::TypeList<Type>> {};
+        template<AlgebraicConcept AlgebraicType>
+        struct UnderlyingProjection<AlgebraicType> : ValueTypes<AlgebraicType> {};
+
+        template<ProductConcept Type>
+        struct ProductReturnType
+        {
+            using Values = ValueTypes<Type>::type;
+
+            using ValuesOfValues = meta::Apply<UnderlyingProjection, Values>::type;
+
+            using Flattened = meta::Invoke<meta::Concat, ValuesOfValues>::type;
+
+            using type = meta::QuotedInvoke<meta::Instantiate<Tuple>, Flattened>::type;
+        };
+
+        template<ProductConcept Type, typename ResultType = ProductReturnType<Type&&>::type>
+        ResultType operator()(Type&& product) const
+        {
+            auto Transform = []<typename Underlying>(Underlying && arg)
+            {
+                if constexpr (ProductConcept<Underlying>) return [&]<typename Invocable>(Invocable&& invocable) -> decltype(auto) requires true
+                {
+                    return Apply(std::forward<Underlying>(arg), std::forward<Invocable>(invocable));
+                }; 
+                else return [&]<std::invocable<Underlying> Invocable>(Invocable && invocable) -> decltype(auto) 
+                {
+                    return std::invoke(std::forward<Invocable>(invocable), std::forward<Underlying>(arg));
+                };
+            };
+
+            return Apply(std::forward<Type>(product) | Map[Transform], functional::IndirectAccumulate[functional::Construct<ResultType>, functional::Args]);
+        }
+
+
+        template<SumConcept Type>
+        struct SumReturnType
+        {
+            using Values = ValueTypes<Type>::type;
+
+            using ValuesOfValues = meta::Apply<UnderlyingProjection, Values>::type;
+
+            using Sizes = meta::QuotedApply<meta::LiftToType<meta::Length>, ValuesOfValues>::type;
+
+            using Sum = meta::QuotedLiftToType<meta::IntoMetafunction<functional::Plus>>;
+
+            using Indices = meta::QuotedExclusiveScan<Sum, meta::ValueType<0>, Sizes>::type;
+
+            using Flattened = meta::Invoke<meta::Concat, ValuesOfValues>::type;
+
+            using type = meta::QuotedInvoke<meta::Instantiate<Variant>, Flattened>::type;
+        };
+
+        template<SumConcept Type, typename ResultType = SumReturnType<Type&&>::type>
+        ResultType operator()(Type&& sum) const
+        {
+            auto VisitTarget = [&]<Size Index>(FromIndexType<Index>) -> ResultType
+            {
+                using Underlying = ValueType<Type&&, Index>::type;
+
+                constexpr auto BaseIndex = meta::At<Index, SumReturnType<Type&&>::Indices>::type::value;
+
+                if constexpr (SumConcept<Underlying>)
+                {
+                    Underlying&& underlying = Get<Index>(std::forward<Type>(sum));
+
+                    auto InnerVisitTarget = [&]<Size InnerIndex>(FromIndexType<InnerIndex>) -> ResultType
+                    {
+                        return ResultType(FromIndex<BaseIndex + InnerIndex>, Get<InnerIndex>(std::forward<Underlying>(underlying)));
+                    };
+
+
+                    return VisitByIndex(std::forward<Underlying>(underlying), InnerVisitTarget);
+                }
+                else return ResultType(FromIndex<BaseIndex>, Get<Index>(std::forward<Type>(sum)));               
+            };
+
+            return VisitByIndex(std::forward<Type>(sum), VisitTarget);
+        }
+    };
+    inline constexpr FlattenFunctor Flatten;
+
+    template<template<typename, typename> typename Comparator = meta::SameBase>
+    struct UniqueFunctor : functional::ExtensionMethod
+    {
+        template<SumConcept Type>
+        struct ReturnType
+        {
+            using Values = ValueTypes<Type>::type;
+
+            using Unique = meta::Unique<Values, Comparator>::type;
+
+            using type = meta::QuotedInvoke<meta::Instantiate<Variant>, Unique>::type;
+        };
+
+        template<SumConcept Type, typename ResultType = ReturnType<Type&&>::type>
+        ResultType operator()(Type&& sum) const
+        {           
+            return ResultType(std::forward<Type>(sum));
+        }
+    };
+    template<template<typename, typename> typename Comparator = meta::SameBase>
+    inline constexpr UniqueFunctor<Comparator> Unique;
+
+    struct ValuesFunctor : functional::ExtensionMethod
+    {
+        template<AlgebraicConcept Type>
+        auto operator()(Type&& algebraic) const
+        {
+            return std::forward<Type>(algebraic) | Map[functional::MakeCopy];
+        }
+    };
+    inline constexpr ValuesFunctor Values;
 
 
     namespace detail

@@ -321,6 +321,17 @@ int main()
         constexpr auto djkfgd = std::is_const_v<const int&>;
     }
 
+    {
+        using list = meta::TypeList<std::string, float, long, float, int, int, int, int, std::string>;
+
+        using unique = meta::Unique<list>::type;
+
+        unique dflgk{};
+
+        std::println();
+
+    }
+
     {        
         using namespace myakish::algebraic;
 
@@ -463,6 +474,52 @@ int main()
         }
 
         {
+            float f = 10.f;
+
+            alg::Tuple<int, float&> tuple(1, f);
+            alg::Tuple<int, float&> tuple2(tuple);
+
+            alg::Tuple<alg::Tuple<int, float&>, std::string, alg::Tuple<int, float&>> tupleOfTuples(tuple, "psink", tuple2);
+
+
+            auto flat = tupleOfTuples | alg::Flatten;
+
+            auto t1 = flat.Get<0>();
+            auto t2 = flat.Get<1>();
+            auto t3 = flat.Get<2>();
+            auto t4 = flat.Get<3>();
+            auto t5 = flat.Get<4>();
+
+            std::println("");
+        }
+
+        {
+            float f = 10.f;
+
+            alg::Variant<int&, alg::Variant<float&, std::string>> var(f);
+
+
+            auto flat = var | alg::Flatten;
+
+            auto &t = flat | alg::GetByType<float&>;
+
+            std::println("");
+        }
+
+        {
+            float f = 10.f;
+
+            alg::Variant<int&, alg::Variant<float&, std::string, int&>> var(f);
+
+
+            auto flat = var | alg::Flatten | alg::Unique<> | alg::Values;
+
+            auto t = flat | alg::GetByType<float>;
+
+            std::println("");
+        }
+
+        {
             alg::Variant<int, float, long> var(2l);
             //std::variant<int, float, long> var(2l);
 
@@ -528,7 +585,6 @@ int main()
 
         meta::ForEach<List>(Func);
 
-        using test = alg::detail::TypeValueToFromIndex<meta::ValueType<1>>::type;
     }
 
     {
