@@ -18,17 +18,14 @@
 namespace myakish::tree::parse
 {
     template<typename Type, typename Descriptor>
-    concept ParserFor = requires(const Type &parser, const Descriptor &desc, std::optional<std::string_view> type, std::string_view value)
-    {
-        parser.TryParse(desc, type, value);
-    };
+    concept ParserFor = std::invocable<const Type&, const Descriptor&, std::optional<std::string_view>, std::string_view>;
 
     struct ParseIntoFunctor : functional::ExtensionMethod
     {
         template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle, ParserFor<Descriptor<StorageType, Handle>>... Parsers>
         void operator()(const Descriptor<StorageType, Handle>& desc, const ast::AST& source, const Parsers&... parsers) const
         {
-            if (source.value) ((parsers.TryParse(desc, source.explicitType, *source.value)), ...);
+            if (source.value) (parsers(desc, source.explicitType, *source.value), ...);
 
             operator()(desc, source.entries, parsers...);
         }

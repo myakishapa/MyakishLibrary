@@ -5,9 +5,9 @@
 
 namespace myakish::tree::parse
 {
-    struct IntParserType
+    struct IntParserType : functional::ExtensionMethod
     {
-        void TryParse(const auto& desc, std::optional<std::string_view> type, std::string_view value) const
+        void operator()(const auto& desc, std::optional<std::string_view> type, std::string_view value) const
         {
             if (type && *type != "int") return;
                       
