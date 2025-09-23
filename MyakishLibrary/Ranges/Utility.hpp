@@ -2,6 +2,7 @@
 
 #include <ranges>
 #include <optional>
+#include <utility>
 
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 #include <MyakishLibrary/Algebraic/Algebraic.hpp>
@@ -49,17 +50,17 @@ namespace myakish::ranges
     template<std::ranges::range Underlying>
     struct ForceBorrowedView : std::ranges::view_interface<ForceBorrowedView<Underlying>>
     {
-        Underlying&& range;
+        std::reference_wrapper<std::remove_reference_t<Underlying>> range;
 
-        ForceBorrowedView(Underlying&& range) : range(std::forward<Underlying>(range)) {}
+        ForceBorrowedView(Underlying&& range) : range(range) {}
 
         auto begin() const
         {
-            return std::ranges::begin(range);
+            return std::ranges::begin(range.get());
         }
         auto end() const
         {
-            return std::ranges::end(range);
+            return std::ranges::end(range.get());
         }
     };
     template<std::ranges::range Underlying>
@@ -67,10 +68,16 @@ namespace myakish::ranges
 
     struct BorrowFunctor : functional::ExtensionMethod
     {
-        template<std::ranges::range Underlying>
-        auto operator()(Underlying&& range) const
+        template<std::ranges::range Wrapped>
+        auto operator()(Wrapped&& range) const
         {
-            return ForceBorrowedView(std::forward<Underlying>(range));
+            return ForceBorrowedView(std::forward<Wrapped>(range));
+        }
+
+        template<std::ranges::borrowed_range Borrowed>
+        decltype(auto) operator()(Borrowed&& range) const
+        {
+            return std::forward<Borrowed>(range);
         }
     };
     inline constexpr BorrowFunctor Borrow;
