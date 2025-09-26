@@ -9,6 +9,8 @@
 
 #include <MyakishLibrary/Utility.hpp>
 
+#include <tuple>
+
 namespace myakish::algebraic
 {
     template<Size Index>
@@ -176,6 +178,78 @@ namespace myakish::algebraic
     template<SumConcept Type>
     struct IndexType : meta::ReturnType<decltype(Index(std::declval<Type>()))> {};
 
+    template<typename Type>
+    concept ProductConcept = AlgebraicConcept<Type> && !SumConcept<Type> && requires(Type && type)
+    {
+        true;
+    };
+
+
+
+    template<typename Type, typename CountType>
+    struct RepeatType : AlgebraicTag
+    {
+        inline constexpr static auto Count = CountType::value;
+
+        Type&& value;
+
+        RepeatType(Type&& value) : value(std::forward<Type>(value)) {}
+
+        template<Size Index> requires(Index < Count)
+            Type&& Get() const
+        {
+            return std::forward<Type>(value);
+        }
+    };
+
+    template<Size Count>
+    struct RepeatFunctor : functional::ExtensionMethod
+    {
+        template<typename Type>
+        auto operator()(Type&& value) const
+        {
+            return RepeatType<Type, FromIndexType<Count>>(std::forward<Type>(value));
+        }
+    };
+    template<Size Count>
+    inline constexpr RepeatFunctor<Count> Repeat;
+
+    namespace detail
+    {
+        template<typename... References>
+        struct ReferenceTuple : AlgebraicTag
+        {
+            std::tuple<References&&...> references;
+
+            ReferenceTuple(References&&... references) : references(std::forward<References>(references)...) {}
+
+            template<Size Index> requires(Index < Size(sizeof...(References)))
+            decltype(auto) Get() const
+            {
+                return functional::detail::ForwardFromTuple<Index>(references);
+            }
+        };
+        template<typename... References>
+        ReferenceTuple(References&&...) -> ReferenceTuple<References...>;
+
+
+    }
+
+    struct VariadicOverloads
+    {
+        template<typename Self, AlgebraicConcept Type, typename ...Functions> requires (Count<Type&&> == sizeof...(Functions))
+        decltype(auto) operator()(this Self&& self, Type&& algebraic, Functions&&... functions) requires requires { std::forward<Self>(self)(std::forward<Type>(algebraic), detail::ReferenceTuple(std::forward<Functions>(functions)...)); }
+        {
+            return std::forward<Self>(self)(std::forward<Type>(algebraic), detail::ReferenceTuple(std::forward<Functions>(functions)...));
+        }
+
+        template<typename Self, AlgebraicConcept Type, typename Function> requires ((Count<Type&&> != 1) && !ProductConcept<Function>)
+        decltype(auto) operator()(this Self&& self, Type&& algebraic, Function&& function) requires requires { std::forward<Self>(self)(std::forward<Type>(algebraic), Repeat<Count<Type&&>>(std::forward<Function>(function))); }
+        {
+            return std::forward<Self>(self)(std::forward<Type>(algebraic), Repeat<Count<Type&&>>(std::forward<Function>(function)));
+        }
+    };
+
 
     namespace detail
     {
@@ -195,7 +269,7 @@ namespace myakish::algebraic
     struct VisitByIndexFunctor : functional::ExtensionMethod
     {
         template<typename First, typename Second>
-        struct SameOrUndefined : std::conditional<std::same_as<First, Second>, First, meta::UndefinedResult> {};
+        struct SameOrUndefined : std::conditional<std::same_as<First, Second>, First, meta::UndefinedType> {};
 
         template<Size LastIndex, typename Function>
         struct ReturnType
@@ -213,7 +287,7 @@ namespace myakish::algebraic
             return operator()(Index(std::forward<Type>(sum)), FromIndex<Count<Type&&>>, std::forward<Function>(function));
         }
 
-        template<Size LastIndex, typename Function> requires(meta::DefinedConcept<ReturnType<LastIndex, Function>>)
+        template<Size LastIndex, typename Function> requires(meta::TypeDefinedConcept<ReturnType<LastIndex, Function>>)
         ReturnType<LastIndex, Function>::type operator()(Size index, FromIndexType<LastIndex>, Function&& function) const
         {
             return detail::Visit<0, LastIndex>(index, std::forward<Function>(function));
@@ -221,36 +295,37 @@ namespace myakish::algebraic
     };
     inline constexpr VisitByIndexFunctor VisitByIndex;
 
-    struct VisitFunctor : functional::ExtensionMethod
+    struct VisitFunctor : functional::ExtensionMethod, VariadicOverloads
     {
-        template<SumConcept Type, typename Function>
+        using VariadicOverloads::operator();
+
+        template<SumConcept Type, ProductConcept Functions>
         struct VisitTarget
         {
             Type&& sum;
-            Function&& function;
+            Functions&& functions;
 
-            VisitTarget(Type&& sum, Function&& function) : sum(std::forward<Type>(sum)), function(std::forward<Function>(function)) {}
+            VisitTarget(Type&& sum, Functions&& functions) : sum(std::forward<Type>(sum)), functions(std::forward<Functions>(functions)) {}
 
             template<Size Index>
             decltype(auto) operator()(FromIndexType<Index>) const
             {
-                return std::invoke(std::forward<Function>(function), Get<Index>(std::forward<Type>(sum)));
+                return std::invoke(Get<Index>(std::forward<Functions>(functions)), Get<Index>(std::forward<Type>(sum)));
             }
         };
         template<SumConcept Type, typename Function>
         VisitTarget(Type&&, Function&&) -> VisitTarget<Type, Function>;
 
-        template<SumConcept Type, typename Function>
-        decltype(auto) operator()(Type&& sum, Function&& function) const requires std::invocable<VisitByIndexFunctor, Type, VisitTarget<Type, Function>>
+        template<SumConcept Type, ProductConcept Functions>
+        decltype(auto) operator()(Type&& sum, Functions&& functions) const requires std::invocable<VisitByIndexFunctor, Type, VisitTarget<Type, Functions>>
         {
-            return VisitByIndex(std::forward<Type>(sum), VisitTarget(std::forward<Type>(sum), std::forward<Function>(function)));
+            return VisitByIndex(std::forward<Type>(sum), VisitTarget(std::forward<Type>(sum), std::forward<Functions>(functions)));
         }
-
     };
     inline constexpr VisitFunctor Visit;
 
     template<typename Alternative, template<typename, typename> typename Comparator = meta::SameBase>
-    struct HoldsAlternativeFunctor : functional::ExtensionMethod
+    struct IsFunctor : functional::ExtensionMethod
     {
         template<SumConcept Type>
         bool operator()(Type&& sum) const
@@ -265,7 +340,7 @@ namespace myakish::algebraic
 
     };
     template<typename Alternative, template<typename, typename> typename Comparator = meta::SameBase>
-    inline constexpr HoldsAlternativeFunctor<Alternative, Comparator> HoldsAlternative;
+    inline constexpr IsFunctor<Alternative, Comparator> Is;
 
 
     template<typename Alternative, template<typename, typename> typename Comparator = meta::SameBase>
@@ -454,11 +529,6 @@ namespace myakish::algebraic
 
 
 
-    template<typename Type>
-    concept ProductConcept = AlgebraicConcept<Type> && !SumConcept<Type> && requires(Type && type)
-    {
-        true;
-    };
 
 
     namespace detail
@@ -475,7 +545,6 @@ namespace myakish::algebraic
             std::invoke(std::forward<Function>(function), FromIndex<CurrentIndex>);
             Iterate<CurrentIndex + 1, TypesCount>(std::forward<Function>(function));
         }
-
     }
 
     struct IterateByIndexFunctor : functional::ExtensionMethod
@@ -742,8 +811,10 @@ namespace myakish::algebraic
         }
     }
 
-    struct MapFunctor : functional::ExtensionMethod
+    struct MapFunctor : functional::ExtensionMethod, VariadicOverloads
     {
+        using VariadicOverloads::operator();
+
         template<AlgebraicConcept Type, ProductConcept Functions>
         struct ReturnType
         {
@@ -793,52 +864,50 @@ namespace myakish::algebraic
 
             return detail::Multitransform<ResultType>(std::forward<Type>(product), std::forward<Functions>(functions), std::make_integer_sequence<Size, Count<Type&&>>{});
         }
-
-
-        template<AlgebraicConcept Type, typename ...Functions> requires (Count<Type&&> == sizeof...(Functions))
-        auto operator()(Type&& algebraic, Functions&&... functions) const requires requires { operator()(std::forward<Type>(algebraic), ForwardAsTuple(std::forward<Functions>(functions)...)); }
-        {
-            return operator()(std::forward<Type>(algebraic), ForwardAsTuple(std::forward<Functions>(functions)...));
-        }
-
-        template<AlgebraicConcept Type, typename Function> requires ((Count<Type&&> != 1) && !ProductConcept<Function>)
-        auto operator()(Type&& algebraic, Function&& function) const requires requires { operator()(std::forward<Type>(algebraic), Repeat<Count<Type&&>>(std::forward<Function>(function))); }
-        {
-            return operator()(std::forward<Type>(algebraic), Repeat<Count<Type&&>>(std::forward<Function>(function)));
-        }
     };
     inline constexpr MapFunctor Map;
 
-
-
-    template<typename Type, typename CountType>
-    struct RepeatType : AlgebraicTag
+    template<auto Underlying>
+    struct FitFunctor : functional::ExtensionMethod, VariadicOverloads
     {
-        inline constexpr static auto Count = CountType::value;
-        using ValueType = Type&&;
+        using VariadicOverloads::operator();
 
-        Type&& value;
-
-        RepeatType(Type&& value) : value(std::forward<Type>(value)) {}
-
-        template<Size Index> requires(Index < Count)
-            Type&& Get() const
+        template<typename Arg, ProductConcept Functions>
+        struct FunctionIndex
         {
-            return std::forward<Type>(value);
+            using FunctionTypes = ValueTypes<Functions>::type;
+
+            using Predicate = meta::RightCurry<std::is_invocable, Arg>;
+
+            inline constexpr static auto value = meta::QuotedFirst<Predicate, FunctionTypes>::value;
+        };
+
+        template<AlgebraicConcept Type, ProductConcept Functions>
+        struct FunctionsProxy : AlgebraicTag
+        {
+            Functions&& functions;
+
+            FunctionsProxy(Type&&, Functions&& functions) : functions(std::forward<Functions>(functions)) {}
+
+            template<Size Index> requires(Index < Count<Type&&>)
+            decltype(auto) Get() const
+            {
+                using FoundFunctionIndex = FunctionIndex<typename ValueType<Type&&, Index>::type, Functions>;
+                if constexpr (meta::ValueDefinedConcept<FoundFunctionIndex>) return algebraic::Get<FoundFunctionIndex::value>(std::forward<Functions>(functions));
+                else return functional::Identity;
+            }
+        };
+        template<AlgebraicConcept Type, ProductConcept Functions>
+        FunctionsProxy(Type&&, Functions&&) -> FunctionsProxy<Type, Functions>;
+
+        template<AlgebraicConcept Type, ProductConcept Functions>
+        decltype(auto) operator()(Type&& algebraic, Functions&& functions) const
+        {
+            return Underlying(std::forward<Type>(algebraic), FunctionsProxy(std::forward<Type>(algebraic), std::forward<Functions>(functions)));
         }
     };
-
-    template<Size Count>
-    struct RepeatFunctor : functional::ExtensionMethod
-    {
-        template<typename Type>
-        auto operator()(Type&& value) const
-        {
-            return RepeatType<Type, FromIndexType<Count>>(std::forward<Type>(value));
-        }
-    };
-    template<Size Count>
-    inline constexpr RepeatFunctor<Count> Repeat;
+    inline constexpr FitFunctor<Map> FitMap;
+    inline constexpr FitFunctor<Visit> FitVisit;
 
 
 
@@ -891,12 +960,14 @@ namespace myakish::algebraic
     template<SumConcept Type>
     struct SynthesizeFunctor : functional::ExtensionMethod
     {
+        using Unqualified = std::remove_cvref_t<Type>;
+
         template<typename ...Args>
         auto operator()(Size index, Args&&... args) const
         {
             auto CreateFunc = [&]<Size Index>(FromIndexType<Index>)
             {
-                return Type(FromIndex<Index>, std::forward<Args>(args)...);
+                return Unqualified(FromIndex<Index>, std::forward<Args>(args)...);
             };
 
             return VisitByIndex(index, FromIndex<Count<Type>>, CreateFunc);

@@ -288,7 +288,7 @@ int main()
 
         int val;
 
-        rule.IO(in, val);
+        rule(in, val);
 
         std::println("{}", val);
 
@@ -358,33 +358,22 @@ int main()
     {
         std::vector<std::byte> data(1024);
 
-        //auto out = st2::ContiguousStream(data.data(), data.data() + data.size());
         auto out = data | st2::WriteToRange;
         auto in = data | st2::ReadFromRange;
         
-        alg::Variant<int, float> val = 20.f;
-        alg::Variant<int, float> val2(val);
+        alg::Variant<int, float> val = 20.5f;
 
-        constexpr auto var = bst::VariantParser(bst::Int, bst::Trivial<float>, bst::Trivial<long double>);
-        auto rule = bst::Engage(hof::Constant(1), std::identity{}) >> var;
+        constexpr auto rule = bst::VariantParser(bst::Int, bst::Trivial<float>, bst::Trivial<long double>);
         
-        using v = decltype(var)::Test;
+        //using Attribute = decltype(rule)::Attribute;
 
-        constexpr auto sizdfgk = sizeof(var);
+        rule(out | st2::WriteOnly, val);
 
-        using Attribute = decltype(var)::Attribute;
+        alg::Variant<int, float> val2;
 
-        auto cast = std::move(val) | alg::Cast<Attribute>;
+        rule(in, val2);
 
-        auto test = std::invoke(hof::Constant(1), var);
-
-        //rule.IO(out | st2::WriteOnly, val);
-
-        out | st2::Write[10.f];
-
-        rule.IO(in, val);
-
-        std::println();
+        std::println("{}", val2 | alg::GetByType<float>);
 
     }
 
@@ -402,21 +391,18 @@ int main()
     {
         std::vector<std::byte> data(1024);
 
-        //auto out = st2::ContiguousStream(data.data(), data.data() + data.size());
         auto out = data | st2::WriteToRange;
         auto in = data | st2::ReadFromRange;
 
         std::vector<int> srcVec = { 1, 2, 3, 4, 5 };
 
-        auto rule = bst::FillRange(std::ranges::size, hof::Identity) >> bst::RepeatParser(bst::Int);
+        constexpr auto rule = bst::RepeatParser(bst::Int);
 
-        rule.IO(out | st2::WriteOnly, srcVec);
+        rule(out | st2::WriteOnly, srcVec);
 
-        //out | st2::Write(10.f);
+        std::vector<int> dstVec;
 
-        //srcVec.clear();
-
-        rule.IO(in, srcVec);
+        rule(in, dstVec);
 
         std::println();
     }
@@ -531,9 +517,11 @@ int main()
 
             auto zipWith3 = [](auto arg) { return std::tuple(arg, 3); };
 
-            auto result = var | alg::Map[intToStr, floatToInt, transformLong] | alg::Map[zipWith3];
+            //auto result = var | alg::Map[intToStr, floatToInt, transformLong] | alg::Map[zipWith3];
+            auto result = alg::Map(var, alg::ForwardAsTuple(intToStr, floatToInt, transformLong));
 
-            result | alg::Visit[test];
+            //result | alg::Visit[test];
+            //alg::Visit(result, test);
 
             auto val = result | alg::Get<2>;
         }
@@ -548,11 +536,11 @@ int main()
         {
             alg::Variant<int, float, long> var(2l);
             
-            auto t1 = var | alg::HoldsAlternative<long>;
-            auto t2 = var | alg::HoldsAlternative<long&>;
-            auto t3 = var | alg::HoldsAlternative<long, std::is_same>;
-            auto t4 = var | alg::HoldsAlternative<long&, std::is_same>;
-            auto t5 = var | alg::HoldsAlternative<int, std::is_same>;
+            auto t1 = var | alg::Is<long>;
+            auto t2 = var | alg::Is<long&>;
+            auto t3 = var | alg::Is<long, std::is_same>;
+            auto t4 = var | alg::Is<long&, std::is_same>;
+            auto t5 = var | alg::Is<int, std::is_same>;
 
             std::println();
         }
@@ -587,7 +575,7 @@ int main()
 
     }
 
-    {
+    /*{
         std::vector nums = { 1, 2, 3, 4, 5 };
 
         auto lambda = λ = ($0 % 2 == 0);
@@ -625,7 +613,7 @@ int main()
 
         //v | alg::Visit[Func];
 
-    }
+    }*/
 
     {
         auto file = myakish::ReadTextFile("myakishParserTest.hvr");

@@ -7,9 +7,23 @@
 
 namespace myakish::meta
 {
-    struct UndefinedResult {};
+    struct UndefinedType {};
+    inline constexpr UndefinedType UndefinedValue;
 
-    struct Undefined { using type = UndefinedResult; };
+    constexpr bool operator==(UndefinedType, UndefinedType)
+    {
+        return true;
+    }
+    constexpr bool operator==(UndefinedType, auto)
+    {
+        return false;
+    }
+
+    struct Undefined 
+    {
+        using type = UndefinedType; 
+        inline constexpr static auto value = UndefinedValue;
+    };
 
     template<typename Result>
     struct ReturnType
@@ -27,11 +41,22 @@ namespace myakish::meta
     struct TypeList {};
 
 
-    template<typename InstantiatedFunction>
-    struct Defined : ReturnValue<!std::same_as<typename InstantiatedFunction::type, UndefinedResult>> {};
 
     template<typename InstantiatedFunction>
-    concept DefinedConcept = Defined<InstantiatedFunction>::value;
+    concept TypeDefinedConcept = !std::same_as<typename InstantiatedFunction::type, UndefinedType>;
+
+    template<typename InstantiatedFunction>
+    struct TypeDefined : ReturnValue<TypeDefinedConcept<InstantiatedFunction>> {};
+
+    template<typename Result, typename Or>
+    struct TypeOr : std::conditional<std::same_as<Result, UndefinedType>, Or, Result> {};
+
+
+    template<typename InstantiatedFunction>
+    concept ValueDefinedConcept = InstantiatedFunction::value != UndefinedValue;
+
+    template<typename InstantiatedFunction>
+    struct ValueDefined : ReturnValue<ValueDefinedConcept<InstantiatedFunction>> {};
 
 
     template<typename NonList>
@@ -51,15 +76,21 @@ namespace myakish::meta
     struct At<Size(0), TypeList<First, Rest...>> : ReturnType<First> {};
 
 
+    template<bool Condition, auto True, auto False>
+    struct ValueConditional : ReturnValue<True> {};
+    template<auto True, auto False>
+    struct ValueConditional<false, True, False> : ReturnValue<False> {};
+
+
     namespace detail
     {
         template<template<typename> typename Predicate, Size Index, typename NonList>
-        struct First : Undefined, ReturnValue<Size(-1)> {};
+        struct First : Undefined {};
 
         template<template<typename> typename Predicate, Size Index, typename Begin, typename ...Rest>
         struct First<Predicate, Index, TypeList<Begin, Rest...>>
         {
-            inline constexpr static Size value = Predicate<Begin>::value ? Index : First<Predicate, Index + 1, TypeList<Rest...>>::value;
+            inline constexpr static auto value = ValueConditional<Predicate<Begin>::value, Index, First<Predicate, Index + 1, TypeList<Rest...>>::value>::value;
             using type = std::conditional_t<Predicate<Begin>::value, Begin, typename First<Predicate, Index + 1, TypeList<Rest...>>::type>;
         };
     }

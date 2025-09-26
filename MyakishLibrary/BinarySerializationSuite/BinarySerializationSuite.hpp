@@ -21,38 +21,75 @@ namespace myakish::binary_serialization_suite
     template<typename Underlying, typename ...Projections>
     struct ProjectedParser;
 
+    namespace detail
+    {
+        template<typename Type>
+        concept HasMemberAttribute = !std::same_as<typename std::remove_cvref_t<Type>::Attribute, meta::UndefinedType>;
+
+        template<typename Type>
+        struct MemberAttribute : meta::Undefined {};
+
+        template<HasMemberAttribute Type>
+        struct MemberAttribute<Type> : meta::ReturnType<typename std::remove_cvref_t<Type>::Attribute>{};
+    }
 
     struct ParserBase
     {
-        template<typename Self, typename Projection>
-        constexpr auto operator[](this Self&& self, Projection projection)
-        {
-            return ProjectedParser(std::move(self), std::move(projection));
-        }
-
         template<typename Self, typename ...Projections>
-        constexpr auto operator()(this Self&& self, Projections... projections)
+        constexpr auto operator[](this Self&& self, Projections... projections)
         {
             return ProjectedParser(std::move(self), std::move(projections)...);
+        }
+
+        template<detail::HasMemberAttribute Self, streams::InputStream Stream>
+        auto Parse(this Self&& self, Stream&& stream)
+        {
+            typename detail::MemberAttribute<Self>::type synthesized{};
+            self(stream, synthesized);
+            return synthesized;
         }
     };
 
     template<typename Type>
     concept ParserConcept = std::derived_from<Type, ParserBase>;
 
+    namespace detail
+    {
+        template<typename UnknownProjection>
+        struct ProjectionSource : meta::Undefined {};
+
+        template<typename Class, typename Field>
+        struct ProjectionSource<Field Class::*>
+        {
+            using type = Class;
+        };
+
+        template<typename First, typename Second>
+        struct SameOrUndefined : std::conditional<std::same_as<First, Second>, First, meta::UndefinedType> {};
+    
+        template<typename ...Projections>
+        struct ProjectedParserAttribute
+        {
+            using Sources = meta::TypeList<typename ProjectionSource<Projections>::type...>;
+
+            using type = meta::RightFold<SameOrUndefined, Sources>::type;
+        };
+    }
+
     template<typename Underlying, typename ...Projections>
     struct ProjectedParser : ParserBase
     {
+        using Attribute = detail::ProjectedParserAttribute<Projections...>::type;
+
         Underlying parser;
         std::tuple<Projections...> projections;
 
         constexpr ProjectedParser(Underlying parser, Projections... projections) : parser(std::move(parser)), projections(std::move(projections)...) {}
 
         template<streams::Stream Stream, typename Attribute> requires (std::invocable<Projections, Attribute> && ...)
-        void IO(Stream&& stream, Attribute&& attribute) const
+        void operator()(Stream&& stream, Attribute&& attribute) const
         {
             IO(stream, attribute, std::make_index_sequence<sizeof...(Projections)>{});
-            //parser.IO(stream, std::invoke(projection, attribute));
         }
 
     private:
@@ -60,26 +97,27 @@ namespace myakish::binary_serialization_suite
         template<streams::Stream Stream, typename Attribute, std::size_t ...Indices>
         void IO(Stream&& stream, Attribute&& attribute, std::index_sequence<Indices...>) const
         {
-            parser.IO(stream, std::invoke(std::get<Indices>(projections), attribute)...);
+            parser(stream, std::invoke(std::get<Indices>(projections), attribute)...);
         }
     };
 
 
+    template<typename Type>
+    concept MonomorphicParserConcept = ParserConcept<Type> && detail::HasMemberAttribute<Type>;
+
+    template<typename Type>
+    struct ParserAttribute : detail::MemberAttribute<Type> {};
+
+
+
     struct NoOpParser : ParserBase
     {
-        void IO(streams::Stream auto&&, auto&&... _) const
+        void operator()(streams::Stream auto&&, auto&&... _) const
         {
 
         }
     };
     inline constexpr NoOpParser NoOp;
-
-    template<typename Type, typename Attribute>
-    concept AttributeLike = requires(Type attributeLike, Attribute attribute)
-    {
-        attributeLike = attribute;
-        static_cast<Attribute>(attributeLike);
-    };
 
 
 
@@ -88,14 +126,15 @@ namespace myakish::binary_serialization_suite
     {
         using Attribute = Type;
 
-        void IO(streams::InputStream auto&& in, AttributeLike<Type> auto&& value) const
+        void operator()(streams::InputStream auto&& in, Type& value) const
         {
             value = in | streams::Read<Type>;
         }
 
-        void IO(streams::OutputStream auto&& out, AttributeLike<Type> auto&& value) const
+
+        void operator()(streams::OutputStream auto&& out, meta::SameBaseConcept<Type> auto const& value) const
         {
-            out | streams::WriteAs<Type>[value];
+            out | streams::Write[value];
         }
     };
 
@@ -106,16 +145,36 @@ namespace myakish::binary_serialization_suite
     inline constexpr TrivialParser<myakish::Size> Size;
     inline constexpr TrivialParser<std::uint64_t> U64;
 
+    struct DeducedTrivialParser : ParserBase
+    {
+        template<typename Value>
+        void operator()(streams::InputStream auto&& in, Value&& value) const
+        {
+            value = in | streams::Read<std::remove_cvref_t<Value>>;
+        }
+
+        void operator()(streams::OutputStream auto&& out, auto&& value) const
+        {
+            out | streams::Write[value];
+        }
+    };
+    inline constexpr DeducedTrivialParser DeducedTrivial;
+
+    template<auto UnknownProjection>
+    inline constexpr DeducedTrivialParser ProjectedTrivial;
+
+    template<typename Class, typename Field, Field Class::* Projection>
+    inline constexpr auto ProjectedTrivial<Projection> = Trivial<Field>[Projection];
 
 
     struct RawParser : ParserBase
     {       
-        void IO(streams::InputStream auto&& in, void* ptr, myakish::Size count) const
+        void operator()(streams::InputStream auto&& in, void* ptr, myakish::Size count) const
         {
             in.Read(myakish::AsBytePtr(ptr), count);
         }
 
-        void IO(streams::OutputStream auto&& out, const void* ptr, myakish::Size count) const
+        void operator()(streams::OutputStream auto&& out, const void* ptr, myakish::Size count) const
         {
             out.Write(myakish::AsBytePtr(ptr), count);
         }
@@ -163,6 +222,14 @@ namespace myakish::binary_serialization_suite
     FakeProjection(ReadProjection, WriteProjection) -> FakeProjection<ReadProjection, WriteProjection>;
 
 
+    namespace detail
+    {
+        template<ParserConcept First, ParserConcept Second>
+        struct SequenceParserAttribute : meta::Undefined {};
+
+        template<MonomorphicParserConcept First, MonomorphicParserConcept Second>
+        struct SequenceParserAttribute<First, Second> : std::conditional<std::same_as<typename ParserAttribute<First>::type, typename ParserAttribute<Second>::type>, typename ParserAttribute<First>::type, meta::UndefinedType> {};
+    }
 
     template<ParserConcept First, ParserConcept Second>
     struct SequenceParser : ParserBase
@@ -170,13 +237,15 @@ namespace myakish::binary_serialization_suite
         First f;
         Second s;
 
+        using Attribute = detail::SequenceParserAttribute<First, Second>::type;
+
         constexpr SequenceParser(First f, Second s) : f(std::move(f)), s(std::move(s)) {}
 
         template<streams::Stream Stream, typename ...Attributes>
-        void IO(Stream&& stream, Attributes&&... attributes) const
+        void operator()(Stream&& stream, Attributes&&... attributes) const
         {
-            f.IO(stream, attributes...);
-            s.IO(stream, attributes...);
+            f(stream, attributes...);
+            s(stream, attributes...);
         }
     };
 
@@ -194,7 +263,7 @@ namespace myakish::binary_serialization_suite
         
         constexpr Align(myakish::Size alignment) : alignment(alignment) {}
 
-        void IO(streams::AlignableStream auto&& stream, auto&&) const
+        void operator()(streams::AlignableStream auto&& stream, auto&&) const
         {
             stream | streams::Align[alignment];
         }
@@ -213,25 +282,25 @@ namespace myakish::binary_serialization_suite
 
 
         template<streams::Stream Stream, typename ArgAttribute>
-        void IO(Stream&& stream, ArgAttribute&& attribute) const
+        void operator()(Stream&& stream, ArgAttribute&& attribute) const
         {
             parser.IO(stream, attribute);
         }
 
-        template<streams::InputStream Stream>
-        Type Parse(Stream&& stream) const
-        {
-            Type synthesized{};
-            IO(stream, synthesized);
-            return synthesized;
-        }
     };
 
-    template<typename Type, ParserConcept Parser>
-    constexpr auto Rule(Parser parser)
+    template<typename Type>
+    struct RuleFunctor : functional::ExtensionMethod
     {
-        return RuleParser<Type, Parser>(std::move(parser));
-    }
+        template<ParserConcept Parser>
+        constexpr auto operator()(Parser parser) const
+        {
+            return RuleParser<Type, Parser>(std::move(parser));
+        }
+    };
+    template<typename Type>
+    inline constexpr RuleFunctor<Type> Rule;
+
 
     template<typename Type, ParserConcept ...Parsers>
     struct SequenceRuleParser : ParserBase
@@ -253,22 +322,19 @@ namespace myakish::binary_serialization_suite
             
             parsers | algebraic::Iterate[Func];
         }
-
-        template<streams::InputStream Stream>
-        Type Parse(Stream&& stream) const
-        {
-            Type synthesized{};
-            IO(stream, synthesized);
-            return synthesized;
-        }
     };
 
-
-    template<typename Type, ParserConcept ...Parsers>
-    constexpr auto SequenceRule(Parsers... parsers)
+    template<typename Type>
+    struct SequenceRuleFunctor : functional::ExtensionMethod
     {
-        return SequenceRuleParser<Type, Parsers...>(std::move(parsers)...);
-    }
+        template<ParserConcept ...Parsers>
+        constexpr auto operator()(Parsers... parsers) const
+        {
+            return SequenceRuleParser<Type, Parsers...>(std::move(parsers)...);
+        }
+    };
+    template<typename Type>
+    inline constexpr SequenceRuleFunctor<Type> SequenceRule;
 
 
 
@@ -279,111 +345,55 @@ namespace myakish::binary_serialization_suite
     }; 
 
 
-
-    template<typename Type>
-    concept MonomorphicParserConcept = ParserConcept<Type> && requires()
-    {
-        typename Type::Attribute;
-    };
-
-    template<MonomorphicParserConcept Parser>
-    using ParserAttribute = Parser::Attribute;
-
-    struct EngageParser : ParserBase
-    {
-        template<streams::InputStream Stream, typename Variant>
-        void IO(Stream&&, myakish::Size index, Variant&& variant) const
-        {       
-            variant = algebraic::Synthesize<std::remove_cvref_t<Variant>>(index);
-        }
-
-        template<streams::OutputStream Stream, typename Variant>
-        void IO(Stream&&, myakish::Size index, Variant&& variant) const
-        {
-            //no-op - variant should be already engaged
-        } 
-    };
-    inline constexpr EngageParser Engage;
-
-    template<MonomorphicParserConcept... Parsers>
+    template<ParserConcept... Parsers>
     struct VariantParser : ParserBase
     { 
-        using Attribute = algebraic::Variant<ParserAttribute<Parsers>...>;
-
-        using Test = meta::TypeList<Parsers...>;
+        //using Attribute = algebraic::Variant<ParserAttribute<Parsers>...>;
 
         std::tuple<const Parsers&...> parsers;
 
         constexpr VariantParser(const Parsers&... parsers) : parsers(parsers...) {}
         constexpr VariantParser(std::tuple<Parsers...> parsers) : parsers(std::move(parsers)) {}
 
-        template<streams::Stream Stream, typename ArgAttribute>
-        void IO(Stream&& out, ArgAttribute&& attribute) const
+        template<streams::OutputStream Stream, typename ArgAttribute>
+        void operator()(Stream&& out, ArgAttribute&& attribute) const
         {
             auto ParseWith = [&](auto&& parser)
                 {
-                    return [&](auto&& attribute)
+                    return [&](auto&& underlying) requires requires { parser(out, underlying); }
                         {
-                            parser.IO(out, attribute);
-                            return attribute;
+                            parser(out, underlying);
                         };
                 };
 
-            attribute = std::forward<ArgAttribute>(attribute) | algebraic::Cast<Attribute> | algebraic::Apply(parsers | algebraic::Map[ParseWith], *algebraic::Map) | algebraic::Cast<std::remove_cvref_t<ArgAttribute>>;
+            out | streams::WriteAs<myakish::Size>[algebraic::Index(attribute)];
+            attribute | algebraic::FitVisit[parsers | algebraic::Map[ParseWith]];
+        }
+
+        template<streams::InputStream Stream, typename ArgAttribute>
+        void operator()(Stream&& in, ArgAttribute&& attribute) const
+        {
+            auto ParseWith = [&](auto&& parser)
+                {
+                    return[&](auto&& underlying) requires requires { parser(in, underlying); }
+                    {
+                        parser(in, underlying);
+                    };
+                };
+
+            auto index = in | streams::Read<myakish::Size>;
+
+            attribute = algebraic::Synthesize<ArgAttribute>(index);
+            algebraic::FitVisit(attribute, parsers | algebraic::Map[ParseWith]);
+            //attribute | algebraic::FitVisit[parsers | algebraic::Map[ParseWith]];
         }
     };
 
     template<MonomorphicParserConcept... Parsers>
     VariantParser(std::tuple<Parsers...> parsers) -> VariantParser<Parsers...>;
 
-    /*template<MonomorphicParserConcept First, MonomorphicParserConcept Second>
-    constexpr auto operator|(First f, Second s)
-    {
-        return VariantParser(std::move(f), std::move(s));
-    }
-
-    template<MonomorphicParserConcept... LeftParsers, MonomorphicParserConcept Second>
-    constexpr auto operator|(VariantParser<LeftParsers...> f, Second s)
-    {
-        return VariantParser(std::tuple_cat( std::move(f.parsers), std::tuple(std::move(s)) ));
-    }
-
-    template<MonomorphicParserConcept First, MonomorphicParserConcept... RightParsers>
-    constexpr auto operator|(First f, VariantParser<RightParsers...> s)
-    {
-        return VariantParser(std::tuple_cat(std::tuple(std::move(f)), std::move(s.parsers)));
-    }
-
-    template<MonomorphicParserConcept... LeftParsers, MonomorphicParserConcept... RightParsers>
-    constexpr auto operator|(VariantParser<LeftParsers...> f, VariantParser<RightParsers...> s)
-    {
-        return VariantParser(std::tuple_cat(std::move(f.parsers), std::move(s.parsers)));
-    }
-    */
-
-    struct FillRangeParser : ParserBase
-    {
-        template<streams::InputStream Stream, std::ranges::range AttributeRange>
-        void IO(Stream&&, myakish::Size count, AttributeRange& attribute) const
-        {
-            auto CreateDefault = [](auto)
-                {
-                    return std::ranges::range_value_t<std::remove_cvref_t<AttributeRange>>{};
-                };
-
-            //attribute = std::views::iota(0, count) | std::views::transform(CreateDefault) | std::ranges::to<std::remove_cvref_t<AttributeRange>>();
-            attribute.resize(count);
-        }
-
-        template<streams::OutputStream Stream, std::ranges::range AttributeRange>
-        void IO(Stream&&, myakish::Size, AttributeRange&& attribute) const
-        {
-            //no-op - range exists
-        }
-    };
-    inline constexpr FillRangeParser FillRange;
-
-
+    
+    
     template<ParserConcept Parser>
     struct RepeatParser : ParserBase
     {
@@ -391,18 +401,28 @@ namespace myakish::binary_serialization_suite
 
         constexpr RepeatParser(Parser parser) : parser(std::move(parser)) {}
 
-
-        template<streams::Stream Stream, std::ranges::range AttributeRange>
-        void IO(Stream&& stream, AttributeRange&& attribute) const
+      
+        template<streams::InputStream Stream, std::ranges::range AttributeRange>
+        void operator()(Stream&& in, AttributeRange&& attribute) const
         {
-            using namespace myakish::literals;
+            auto size = Size.Parse(in);
 
-            auto Parse = [&](auto&& attribute)
+            auto Parse = [&](auto _)
                 {
-                    parser.IO(stream, attribute);
+                    std::ranges::range_value_t<AttributeRange> synthesized{};
+                    parser(in, synthesized);
+                    return synthesized;
                 };
 
-            std::ranges::for_each(attribute, Parse);
+            attribute = std::views::iota(0, size) | std::views::transform(Parse) | std::ranges::to<std::remove_cvref_t<AttributeRange>>();
+        }
+
+        template<streams::OutputStream Stream, std::ranges::range AttributeRange>
+        void operator()(Stream&& out, AttributeRange&& attribute) const
+        {
+            out | streams::WriteAs<myakish::Size>[std::ranges::size(attribute)];
+
+            std::ranges::for_each(attribute, functional::Invoke[parser, out, functional::Arg<0>]);
         }
     };
 
