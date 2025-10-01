@@ -163,7 +163,7 @@
     <ClInclude Include="Ranges\Bit.hpp" />
     <ClInclude Include="Ranges\Utility.hpp" />
     <ClInclude Include="Streams\Common.hpp" />
-    <ClInclude Include="Streams\Concepts.hpp" />
+    <ClInclude Include="Streams\Streams.hpp" />
     <ClInclude Include="Utility.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

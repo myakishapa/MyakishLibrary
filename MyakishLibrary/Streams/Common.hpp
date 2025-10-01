@@ -6,7 +6,7 @@
 
 #include <MyakishLibrary/Meta.hpp>
 
-#include <MyakishLibrary/Streams/Concepts.hpp>
+#include <MyakishLibrary/Streams/Streams.hpp>
 
 #include <MyakishLibrary/Utility.hpp>
 
@@ -110,11 +110,6 @@ namespace myakish::streams
             stream.Seek(size);
         }
 
-        bool Valid() const
-        {
-            return stream.Valid();
-        }
-
         Size Length() const requires SizedStream<Underlying>
         {
             return stream.Length();
@@ -143,7 +138,7 @@ namespace myakish::streams
         }
     };
     static_assert(AlignableStream<AlignableWrapper<ExpositionOnlyStream>>, "AlignableWrapper must be AlignableStream");
-    static_assert(SizedStream<AlignableWrapper<ExpositionOnlyStream>>, "AlignableWrapper must be RandomAccessStream");
+    static_assert(SizedStream<AlignableWrapper<ExpositionOnlyStream>>, "AlignableWrapper must be SizedStream");
     static_assert(InputStream<AlignableWrapper<ExpositionOnlyStream>>, "AlignableWrapper must be InputStream");
     static_assert(ReservableStream<AlignableWrapper<ExpositionOnlyStream>>, "AlignableWrapper must be ReservableStream");
 
@@ -312,48 +307,48 @@ namespace myakish::streams
     };
     inline constexpr CopyFunctor Copy;
 
-    struct WriteFunctor : functional::ExtensionMethod
+    struct WriteTrivialFunctor : functional::ExtensionMethod
     {
         constexpr void operator()(OutputStream auto&& out, myakish::meta::TriviallyCopyableConcept auto value) const
         {
-            out.Write(reinterpret_cast<const std::byte*>(&value), sizeof(value));
+            Write(out, reinterpret_cast<const std::byte*>(&value), sizeof(value));
         }
 
         constexpr void operator()(OutputStream auto&& out, std::string_view str) const
         {
-            out.Write(reinterpret_cast<const std::byte*>(str.data()), str.size());
+            Write(out, reinterpret_cast<const std::byte*>(str.data()), str.size());
         }
     };
-    inline constexpr WriteFunctor Write;
+    inline constexpr WriteTrivialFunctor WriteTrivial;
 
     template<myakish::meta::TriviallyCopyableConcept Type>
     struct WriteAsFunctor : functional::ExtensionMethod
     {
         constexpr void operator()(OutputStream auto&& out, Type value) const
         {
-            out.Write(reinterpret_cast<const std::byte*>(&value), sizeof(value));
+            Write(out, reinterpret_cast<const std::byte*>(&value), sizeof(value));
         }
 
         constexpr void operator()(OutputStream auto&& out, std::string_view str) const requires std::same_as<Type, std::string_view>
         {
-            out.Write(reinterpret_cast<const std::byte*>(str.data()), str.size());
+            Write(out, reinterpret_cast<const std::byte*>(str.data()), str.size());
         }
     };
     template<myakish::meta::TriviallyCopyableConcept Type>
     inline constexpr WriteAsFunctor<Type> WriteAs;
 
     template<myakish::meta::TriviallyCopyableConcept Type>
-    struct ReadFunctor : functional::ExtensionMethod
+    struct ReadTrivialFunctor : functional::ExtensionMethod
     {
         constexpr Type operator()(InputStream auto&& in) const
         {
             Type result;
-            in.Read(reinterpret_cast<std::byte*>(&result), sizeof(result));
+            Read(in, reinterpret_cast<std::byte*>(&result), sizeof(result));
             return result;
         }
     };
     template<myakish::meta::TriviallyCopyableConcept Type>
-    inline constexpr ReadFunctor<Type> Read;
+    inline constexpr ReadTrivialFunctor<Type> ReadTrivial;
 
     struct AlignFunctor : functional::ExtensionMethod
     {

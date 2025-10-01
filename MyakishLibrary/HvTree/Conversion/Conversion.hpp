@@ -29,7 +29,7 @@ namespace myakish::tree::conversion
         template<streams::InputStream Stream>
         static Type Convert(Stream&& in)
         {
-            return streams::Read<Type>(in);
+            return streams::ReadTrivial<Type>(in);
         }
     };
 
@@ -42,7 +42,7 @@ namespace myakish::tree::conversion
         static void Convert(Stream&& out, Type value)
         {
             if constexpr (streams::ReservableStream<Stream>) out.Reserve(sizeof(Type));
-            streams::Write(out, value);
+            streams::WriteTrivial(out, value);
         }
     };
 

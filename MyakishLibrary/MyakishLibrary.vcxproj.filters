@@ -62,9 +62,6 @@
     <ClInclude Include="Any.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Streams\Concepts.hpp">
-      <Filter>Header Files\Streams</Filter>
-    </ClInclude>
     <ClInclude Include="Streams\Common.hpp">
       <Filter>Header Files\Streams</Filter>
     </ClInclude>
@@ -139,6 +136,9 @@
     </ClInclude>
     <ClInclude Include="Ranges\Utility.hpp">
       <Filter>Header Files\Ranges</Filter>
+    </ClInclude>
+    <ClInclude Include="Streams\Streams.hpp">
+      <Filter>Header Files\Streams</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

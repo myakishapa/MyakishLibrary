@@ -11,7 +11,6 @@
 
 #include <MyakishLibrary/Meta.hpp>
 
-#include <MyakishLibrary/Streams/Concepts.hpp>
 #include <MyakishLibrary/Streams/Common.hpp>
 
 #include <MyakishLibrary/Functional/HigherOrder.hpp>
@@ -92,13 +91,13 @@ int main()
         //auto out = st2::ContiguousStream(data.data(), data.data() + data.size());
         auto out = data | st2::WriteToRange;
 
-        out | st2::Write[1337];
-        st2::Write(out, 228);
+        out | st2::WriteTrivial[1337];
+        st2::WriteTrivial(out, 228);
 
         auto in = data | st2::ReadFromRange | st2::Polymorphize;
 
-        auto i1 = st2::Read<int>(in);
-        auto i2 = st2::Read<int>(in);
+        auto i1 = st2::ReadTrivial<int>(in);
+        auto i2 = st2::ReadTrivial<int>(in);
 
         std::println("{} {}", i1, i2);
     }
@@ -113,12 +112,12 @@ int main()
     {
         auto in = std::views::iota(0) | st2::ReadFromRange;
 
-        auto i1 = st2::Read<std::uint16_t>(in);
-        auto i2 = st2::Read<std::uint16_t>(in);
+        auto i1 = st2::ReadTrivial<std::uint16_t>(in);
+        auto i2 = st2::ReadTrivial<std::uint16_t>(in);
 
         for (int i = 0; i < 10; i++)
         {
-            std::print("{} ", in | st2::Read<std::uint16_t>);
+            std::print("{} ", in | st2::ReadTrivial<std::uint16_t>);
             in.Seek(4);
         }
 
@@ -282,7 +281,7 @@ int main()
         auto out = data | st2::WriteToRange;
         auto in = data | st2::ReadFromRange;
 
-        out | st2::Write[1337];
+        out | st2::WriteTrivial[1337];
 
         auto rule = bst::Int;
 

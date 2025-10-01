@@ -128,13 +128,13 @@ namespace myakish::binary_serialization_suite
 
         void operator()(streams::InputStream auto&& in, Type& value) const
         {
-            value = in | streams::Read<Type>;
+            value = in | streams::ReadTrivial<Type>;
         }
 
 
         void operator()(streams::OutputStream auto&& out, meta::SameBaseConcept<Type> auto const& value) const
         {
-            out | streams::Write[value];
+            out | streams::WriteTrivial[value];
         }
     };
 
@@ -150,12 +150,12 @@ namespace myakish::binary_serialization_suite
         template<typename Value>
         void operator()(streams::InputStream auto&& in, Value&& value) const
         {
-            value = in | streams::Read<std::remove_cvref_t<Value>>;
+            value = in | streams::ReadTrivial<std::remove_cvref_t<Value>>;
         }
 
         void operator()(streams::OutputStream auto&& out, auto&& value) const
         {
-            out | streams::Write[value];
+            out | streams::WriteTrivial[value];
         }
     };
     inline constexpr DeducedTrivialParser DeducedTrivial;
@@ -381,7 +381,7 @@ namespace myakish::binary_serialization_suite
                     };
                 };
 
-            auto index = in | streams::Read<myakish::Size>;
+            auto index = in | streams::ReadTrivial<myakish::Size>;
 
             attribute = algebraic::Synthesize<ArgAttribute>(index);
             algebraic::FitVisit(attribute, parsers | algebraic::Map[ParseWith]);

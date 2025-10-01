@@ -3,7 +3,6 @@
 #include <MyakishLibrary/Utility.hpp>
 
 #include <MyakishLibrary/Streams/Common.hpp>
-#include <MyakishLibrary/Streams/Concepts.hpp>
 
 #include <memory>
 #include <map>
