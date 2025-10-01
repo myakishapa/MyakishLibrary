@@ -324,23 +324,31 @@ namespace myakish::algebraic
     };
     inline constexpr VisitFunctor Visit;
 
-    template<typename Alternative, template<typename, typename> typename Comparator = meta::SameBase>
-    struct IsFunctor : functional::ExtensionMethod
+    template<template<typename> typename Predicate>
+    struct IsPredicateFunctor : functional::ExtensionMethod
     {
         template<SumConcept Type>
         bool operator()(Type&& sum) const
         {
             auto Func = [&]<typename Arg>(Arg&&) -> bool
             {
-                return Comparator<Arg&&, Alternative>::value;
+                return Predicate<Arg&&>::value;
             };
 
             return Visit(std::forward<Type>(sum), Func);
         }
 
     };
+    template<typename Quoted>
+    struct QuotedIsPredicateFunctor : IsPredicateFunctor<Quoted::template Function> {};
+
+    template<template<typename> typename Predicate>
+    inline constexpr IsPredicateFunctor<Predicate> IsPredicate;
+    template<typename Quoted>
+    inline constexpr QuotedIsPredicateFunctor<Quoted> QuotedIsPredicate;
+
     template<typename Alternative, template<typename, typename> typename Comparator = meta::SameBase>
-    inline constexpr IsFunctor<Alternative, Comparator> Is;
+    inline constexpr QuotedIsPredicateFunctor<meta::LeftCurry<Comparator, Alternative>> Is;
 
 
     template<typename Alternative, template<typename, typename> typename Comparator = meta::SameBase>
