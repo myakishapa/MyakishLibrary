@@ -287,7 +287,22 @@ namespace myakish::functional
 
 
     template<typename Invocable, typename ...CurryArgs>
-    struct ExtensionClosure
+    struct ExtensionClosure;
+
+    struct ExtensionMethod
+    {
+        template<typename Self, typename ...Args>
+        constexpr auto operator[](this Self&& self, Args&&... args)
+        {
+            if constexpr (meta::QuotedAnyOf<meta::Compose<std::remove_cvref, LambdaExpression>, meta::TypeList<Args&&...>>::value)
+                return LambdaClosure(std::forward<Self>(self), detail::MakeExpression(std::forward<Args>(args))...);
+            else
+                return ExtensionClosure(std::forward<Self>(self), std::forward<Args>(args)...);
+        }
+    };
+
+    template<typename Invocable, typename ...CurryArgs>
+    struct ExtensionClosure : ExtensionMethod
     {
         Invocable&& baseInvocable;
         std::tuple<CurryArgs&&...> curryArgs;
@@ -309,44 +324,9 @@ namespace myakish::functional
             return std::invoke(std::forward<Invocable>(baseInvocable), std::forward<Args>(args)..., std::forward<CurryArgs>(std::get<Indices>(curryArgs))...);
         }
     };
-
     template<typename Invocable, typename ...CurryArgs>
     ExtensionClosure(Invocable&&, CurryArgs&&...) -> ExtensionClosure<Invocable&&, CurryArgs&&...>;
 
-
-    struct ExtensionMethod
-    {
-        template<typename Self, typename ...Args>
-        constexpr auto operator[](this Self&& self, Args&&... args)
-        {
-            if constexpr (meta::QuotedAnyOf<meta::Compose<std::remove_cvref, LambdaExpression>, meta::TypeList<Args&&...>>::value)
-                return LambdaClosure(std::forward<Self>(self), detail::MakeExpression(std::forward<Args>(args))...);
-            else
-                return ExtensionClosure(std::forward<Self>(self), std::forward<Args>(args)...);
-        }
-
-
-
-        template<typename Invocable>
-        struct PartialApplier
-        {
-            Invocable&& invocable;
-
-            constexpr PartialApplier(Invocable&& invocable) : invocable(std::forward<Invocable>(invocable)) {}
-
-            template<typename ...Args>
-            constexpr auto operator()(Args&&... args) const
-            {
-                return std::forward<Invocable>(invocable)[std::forward<Args>(args)...];
-            }
-        };
-
-        template<typename Self>
-        constexpr auto operator*(this Self&& self)
-        {
-            return PartialApplier<Self>(std::forward<Self>(self));
-        }
-    };
 
 
     struct IndirectAccumulateFunctor : ExtensionMethod
@@ -374,7 +354,7 @@ namespace myakish::functional
     struct LambdaOperand<Type> : std::false_type {};
 
 
-    template<LambdaExpressionConcept Expression>
+    template<typename Expression>
     struct CompleteLambda : ExtensionMethod
     {
         Expression expression;
@@ -387,18 +367,23 @@ namespace myakish::functional
             return expression(std::forward<Args>(args)...);
         }
     };
-    template<LambdaExpressionConcept Expression>
+    template<typename Expression>
     CompleteLambda(Expression) -> CompleteLambda<Expression>;
 
     struct CompleteFunctor : ExtensionMethod, DisableLambdaOperatorsTag
     {
-        template<LambdaExpressionConcept Expression>
+        template<typename Expression> 
         constexpr auto operator()(Expression&& expression) const
         {
             return CompleteLambda(std::forward<Expression>(expression));
         }
+        template<meta::DerivedFrom<ExtensionMethod> Expression>
+        constexpr auto operator()(Expression&& expression) const
+        {
+            return std::forward<Expression>(expression);
+        }
 
-        template<LambdaExpressionConcept Expression>
+        template<typename Expression>
         constexpr auto operator=(Expression&& expression) const
         {
             return operator()(std::forward<Expression>(expression));
@@ -646,7 +631,7 @@ namespace myakish::functional
 
 
     template<typename Type>
-    concept PipelinableTo = std::derived_from<std::remove_cvref_t<Type>, ExtensionMethod> || meta::InstanceOfConcept<Type, ExtensionClosure> || meta::InstanceOfConcept<Type, ExtensionMethod::PartialApplier>;
+    concept PipelinableTo = meta::DerivedFrom<Type, ExtensionMethod>;
 
     template<typename Arg, PipelinableTo Extension> requires std::invocable<Extension&&, Arg&&>
     constexpr decltype(auto) operator|(Arg&& arg, Extension&& ext)
@@ -654,5 +639,175 @@ namespace myakish::functional
         return std::invoke(std::forward<Extension>(ext), std::forward<Arg>(arg));
     }
     
+    namespace detail
+    {
+        template<typename Only>
+        constexpr Only&& RightFold(auto&&, Only&& only)
+        {
+            return std::forward<Only>(only);
+        }
 
+        template<typename First, typename... Rest, typename Invocable>
+        constexpr decltype(auto) RightFold(Invocable&& invocable, First&& first, Rest&&... rest)
+        {
+            return std::invoke(std::forward<Invocable>(invocable), first, RightFold(std::forward<Invocable>(invocable), std::forward<Rest>(rest)...));
+        }
+    }
+
+    inline namespace higher_order
+    {
+        struct ConstantFunctor : ExtensionMethod
+        {
+            constexpr auto operator()(auto value) const
+            {
+                return Complete = [=](auto&&...)
+                    {
+                        return value;
+                    };
+            }
+        };
+        inline constexpr ConstantFunctor Constant;
+
+        struct RightFoldFunctor : ExtensionMethod
+        {
+            template<typename... Args, typename Invocable> 
+            constexpr decltype(auto) operator()(Invocable&& invocable, Args&&... args) const
+            {
+                return detail::RightFold(std::forward<Invocable>(invocable), std::forward<Args>(args)...);
+            }
+        };
+        inline constexpr RightFoldFunctor RightFold;
+
+        template<typename Inner, typename Outer>
+        struct Composite : ExtensionMethod
+        {
+            Inner inner;
+            Outer outer;
+
+            constexpr Composite(Inner inner, Outer outer) : inner(std::move(inner)), outer(std::move(outer)) {}
+
+            template<typename Self, typename ...Args>
+            constexpr decltype(auto) operator()(this Self&& self, Args&&... args) requires requires { std::invoke(std::forward<Self>(self).outer, std::invoke(std::forward<Self>(self).inner, std::forward<Args>(args)...)); }
+            {
+                return std::invoke(std::forward<Self>(self).outer, std::invoke(std::forward<Self>(self).inner, std::forward<Args>(args)...));
+            }
+        };
+        template<typename Inner, typename Outer>
+        Composite(Inner, Outer) -> Composite<Inner, Outer>;
+
+        struct ComposeFunctor : ExtensionMethod
+        {
+            template<typename Inner, typename Outer>
+            constexpr auto operator()(Inner inner, Outer outer) const
+            {
+                return Composite(std::move(inner), std::move(outer));
+            }
+        };
+        inline constexpr ComposeFunctor Compose;
+
+
+        struct MakeCopyFunctor : ExtensionMethod
+        {
+            template<typename Arg>
+            constexpr auto operator()(Arg&& arg) const
+            {
+                return std::forward<Arg>(arg);
+            }
+        };
+        inline constexpr MakeCopyFunctor MakeCopy;
+
+        struct IdentityFunctor : ExtensionMethod
+        {
+            template<typename Arg>
+            constexpr Arg&& operator()(Arg&& arg) const
+            {
+                return std::forward<Arg>(arg);
+            }
+        };
+        inline constexpr IdentityFunctor Identity;
+
+        template<typename Type>
+        struct ConstructFunctor : ExtensionMethod
+        {
+            template<typename ...Args> requires std::constructible_from<Type, Args&&...>
+            constexpr Type operator()(Args&&... args) const
+            {
+                return Type(std::forward<Args>(args)...);
+            }
+        };
+        template<typename Type>
+        inline constexpr ConstructFunctor<Type> Construct;
+
+
+        template<typename Type>
+        struct StaticCastFunctor : ExtensionMethod
+        {
+            template<std::convertible_to<Type> Arg>
+            constexpr auto operator()(Arg&& arg) const
+            {
+                return static_cast<Type>(std::forward<Arg>(arg));
+            }
+        };
+        template<typename Type>
+        inline constexpr StaticCastFunctor<Type> StaticCast;
+
+        struct InvokeFunctor : ExtensionMethod
+        {
+            template<typename Invocable, typename ...Args> requires std::invocable<Invocable&&, Args&&...>
+            constexpr decltype(auto) operator()(Invocable&& invocable, Args&&... args) const
+            {
+                return std::invoke(std::forward<Invocable>(invocable), std::forward<Args>(args)...);
+            }
+        };
+        inline constexpr InvokeFunctor Invoke;
+
+
+        struct IfFunctor : ExtensionMethod
+        {
+            template<typename True, typename False>
+            constexpr decltype(auto) operator()(bool condition, True&& trueValue, False&& falseValue) const
+            {
+                return condition ? std::forward<True>(trueValue) : std::forward<False>(falseValue);
+            }
+        };
+        inline constexpr IfFunctor If;
+
+
+        struct BitWidthFunctor : ExtensionMethod
+        {
+            template<std::unsigned_integral Number>
+            constexpr int operator()(Number num) const
+            {
+                return std::bit_width(num);
+            }
+        };
+        inline constexpr BitWidthFunctor BitWidth;
+
+        struct MaxFunctor : ExtensionMethod
+        {
+            template<typename Type>
+            constexpr const Type& operator()(const Type& f, const Type& s) const
+            {
+                return std::max(f, s);
+            }
+        };
+        inline constexpr MaxFunctor Max;
+
+        struct MinFunctor : ExtensionMethod
+        {
+            template<typename Type>
+            constexpr const Type& operator()(const Type& f, const Type& s) const
+            {
+                return std::min(f, s);
+            }
+        };
+        inline constexpr MinFunctor Min;
+
+    }
+    
+    template<typename Inner, typename Outer> requires(PipelinableTo<Inner> || PipelinableTo<Outer>)
+    constexpr decltype(auto) operator>>(Inner inner, Outer outer)
+    {
+        return Compose(std::move(inner), std::move(outer));
+    }
 }

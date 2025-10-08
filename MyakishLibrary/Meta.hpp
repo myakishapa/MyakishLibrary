@@ -210,6 +210,10 @@ namespace myakish::meta
     concept TypeListConcept = InstanceOfConcept<Type, TypeList>;
 
 
+    template<typename Type, typename Base>
+    concept DerivedFrom = std::derived_from<std::remove_cvref_t<Type>, Base>;
+
+
     template<template<typename...> typename Underlying>
     struct Quote
     {

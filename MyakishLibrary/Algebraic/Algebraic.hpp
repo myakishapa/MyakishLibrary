@@ -3,7 +3,6 @@
 #include <MyakishLibrary/Algebraic/Accessors.hpp>
 
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
-#include <MyakishLibrary/Functional/HigherOrder.hpp>
 
 #include <MyakishLibrary/Meta.hpp>
 

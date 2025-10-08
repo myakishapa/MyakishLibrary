@@ -13,8 +13,6 @@
 
 #include <MyakishLibrary/Streams/Common.hpp>
 
-#include <MyakishLibrary/Functional/HigherOrder.hpp>
-
 #include <MyakishLibrary/Utility.hpp>
 
 #include <MyakishLibrary/Ranges/Bit.hpp>
@@ -380,7 +378,7 @@ int main()
         auto func1 = [](int i) -> float { return i * 2.f; };
         auto func2 = [](float f) -> double { return f * 2.0; };
 
-        auto comp = func1 | hof::DecayCompose[hof::Identity] | hof::DecayCompose[func2];
+        auto comp = func1 >> hof::Identity >> func2;
 
         auto val = comp(2);
 

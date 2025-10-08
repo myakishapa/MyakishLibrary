@@ -354,7 +354,7 @@ namespace myakish::streams
     {
         constexpr void operator()(AlignableStream auto&& stream, Size alignment) const
         {
-            stream.Seek(Padding(stream.Offset(), alignment));
+            stream | Seek(Padding(stream.Offset(), alignment));
         }
     };
     inline constexpr AlignFunctor Align;
