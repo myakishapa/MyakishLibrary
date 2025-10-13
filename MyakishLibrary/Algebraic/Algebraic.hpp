@@ -275,7 +275,7 @@ namespace myakish::algebraic
         {
             using Indices = meta::IntegerSequence<Size, LastIndex>::type;
 
-            using Results = meta::QuotedApply<meta::LeftCurry<std::invoke_result, Function>, Indices>::type;
+            using Results = meta::QuotedMap<meta::LeftCurry<std::invoke_result, Function>, Indices>::type;
 
             using type = meta::RightFold<SameOrUndefined, Results>::type;
         };
@@ -831,7 +831,7 @@ namespace myakish::algebraic
             using Zipped = meta::Zip<FunctionTypes, Values>::type;
 
             using ResultMetafunction = meta::LeftCurry<meta::QuotedInvoke, meta::Quote<std::invoke_result>>;
-            using Results = meta::QuotedApply<ResultMetafunction, Zipped>::type;
+            using Results = meta::QuotedMap<ResultMetafunction, Zipped>::type;
 
             using InstantiateMetafunction = std::conditional_t<SumConcept<Type>, meta::Instantiate<Variant>, meta::Instantiate<Tuple>>;
 
@@ -1030,7 +1030,7 @@ namespace myakish::algebraic
         {
             using Values = ValueTypes<Type>::type;
 
-            using ValuesOfValues = meta::Apply<UnderlyingProjection, Values>::type;
+            using ValuesOfValues = meta::Map<UnderlyingProjection, Values>::type;
 
             using Flattened = meta::Invoke<meta::Concat, ValuesOfValues>::type;
 
@@ -1061,9 +1061,9 @@ namespace myakish::algebraic
         {
             using Values = ValueTypes<Type>::type;
 
-            using ValuesOfValues = meta::Apply<UnderlyingProjection, Values>::type;
+            using ValuesOfValues = meta::Map<UnderlyingProjection, Values>::type;
 
-            using Sizes = meta::QuotedApply<meta::LiftToType<meta::Length>, ValuesOfValues>::type;
+            using Sizes = meta::QuotedMap<meta::LiftToType<meta::Length>, ValuesOfValues>::type;
 
             using Sum = meta::QuotedLiftToType<meta::IntoMetafunction<functional::Plus>>;
 

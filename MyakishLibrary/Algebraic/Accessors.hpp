@@ -154,7 +154,7 @@ namespace myakish::algebraic
 
             using DeducerFunc = meta::LeftCurry<meta::QuotedInvoke, meta::Quote<DeducerMetafunction>>;
 
-            using Deducers = meta::QuotedApply<DeducerFunc, Zipped>::type;
+            using Deducers = meta::QuotedMap<DeducerFunc, Zipped>::type;
 
             using Overloads = meta::QuotedInvoke<meta::Instantiate<DeduceOverloads>, Deducers>::type;
 

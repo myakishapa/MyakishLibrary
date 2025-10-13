@@ -311,7 +311,7 @@ int main()
         using invokeResultQ = meta::Quote<std::invoke_result>;
         using fn = meta::LeftCurry<meta::QuotedInvoke, invokeResultQ>;
         
-        using results = meta::QuotedApply<fn, zipped>::type;
+        using results = meta::QuotedMap<fn, zipped>::type;
 
         using constFloat = meta::CopyQualifiers<const int&&, float>::type;
 

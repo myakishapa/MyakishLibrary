@@ -75,6 +75,9 @@ namespace myakish::meta
     template<typename First, typename ...Rest>
     struct At<Size(0), TypeList<First, Rest...>> : ReturnType<First> {};
 
+    template<typename IndexType, typename List>
+    struct QuotedAt : At<IndexType::value, List> {};
+
 
     template<bool Condition, auto True, auto False>
     struct ValueConditional : ReturnValue<True> {};
@@ -317,13 +320,13 @@ namespace myakish::meta
 
 
     template<template<typename> typename Func, typename NonList>
-    struct Apply : Undefined {};
+    struct Map : Undefined {};
 
     template<template<typename> typename Func, typename ...Types>
-    struct Apply<Func, TypeList<Types...>> : ReturnType<TypeList<typename Func<Types>::type...>> {};
+    struct Map<Func, TypeList<Types...>> : ReturnType<TypeList<typename Func<Types>::type...>> {};
 
     template<typename Quoted, typename List>
-    struct QuotedApply : Apply<Quoted::template Function, List> {};
+    struct QuotedMap : Map<Quoted::template Function, List> {};
 
 
 
