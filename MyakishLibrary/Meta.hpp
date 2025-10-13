@@ -530,4 +530,62 @@ namespace myakish::meta
 
     template<typename Type, typename RangeValue>
     concept RangeOfConcept = std::ranges::range<Type> && std::same_as<std::ranges::range_value_t<Type>, RangeValue>;
+
+
+
+
+    template<typename Expression>
+    struct IsLambdaExpression : std::false_type {};
+
+    template<typename Expression>
+    concept LambdaExpressionConcept = IsLambdaExpression<Expression>::value;
+
+
+    template<typename SimpleType>
+    struct Lambda : Constant<SimpleType> {};
+
+    template<typename Underlying>
+    struct IsLambdaExpression<Lambda<Underlying>> : std::true_type {};
+
+
+    struct LambdaExpressionTag {};
+
+    template<std::derived_from<LambdaExpressionTag> Expression>
+    struct IsLambdaExpression<Expression> : std::true_type {};
+
+
+
+    template<LambdaExpressionConcept Expression>
+    struct Lambda<Expression> : Expression {};
+
+    template<template<typename...> typename Underlying, typename... Bound>
+    struct Lambda<Underlying<Bound...>>
+    {
+        template<typename ...Args>
+        struct Function : Underlying<typename Lambda<Bound>::template Function<Args...>::type...> {};
+    };
+
+    template<Size Index>
+    struct Arg : LambdaExpressionTag
+    {
+        template<typename ...Args>
+        struct Function : At<Index, TypeList<Args...>> {};
+    };
+
+
+    template<typename Type>
+    struct Protect : LambdaExpressionTag, Constant<Type> {};
+
+    template<Size ListIndex, Size ArgIndex = 0>
+    struct AtArg : LambdaExpressionTag, Lambda<QuotedAt<ValueType<ListIndex>, Arg<ArgIndex>>> {};
+
+
+    namespace shorthands
+    {
+        template<Size Index>
+        struct $ : Arg<Index> {};
+
+        template<Size ListIndex, Size ArgIndex = 0>
+        struct $i : AtArg<ListIndex, ArgIndex> {};
+    }
 }
