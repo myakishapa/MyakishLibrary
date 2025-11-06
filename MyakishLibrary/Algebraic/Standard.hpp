@@ -10,7 +10,7 @@
 namespace myakish::algebraic
 {
     template<meta::InstanceOfConcept<std::variant> Variant>
-    inline constexpr bool EnableAlgebraicFor<Variant> = true;
+    struct EnableAlgebraicFor<Variant> : std::true_type {};
 
     template<Size Index, meta::InstanceOfConcept<std::variant> Variant>
     decltype(auto) GetADL(Variant&& variant) requires (Index < std::variant_size_v<std::remove_cvref_t<Variant>>)
@@ -26,7 +26,7 @@ namespace myakish::algebraic
 
 
     template<meta::InstanceOfConcept<std::tuple> Tuple>
-    inline constexpr bool EnableAlgebraicFor<Tuple> = true;
+    struct EnableAlgebraicFor<Tuple> : std::true_type {};
 
     template<Size Index, meta::InstanceOfConcept<std::tuple> Tuple>
     decltype(auto) GetADL(Tuple&& tuple) requires (Index < std::tuple_size_v<std::remove_cvref_t<Tuple>>)
@@ -36,7 +36,7 @@ namespace myakish::algebraic
 
 
     template<meta::InstanceOfConcept<std::optional> Optional>
-    inline constexpr bool EnableAlgebraicFor<Optional> = true;
+    struct EnableAlgebraicFor<Optional> : std::true_type {};
 
     template<Size Index, meta::InstanceOfConcept<std::optional> Optional>
     decltype(auto) GetADL(Optional&& optional) requires (0 <= Index && Index <= 1)

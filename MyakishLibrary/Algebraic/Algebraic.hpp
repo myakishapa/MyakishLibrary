@@ -18,17 +18,17 @@ namespace myakish::algebraic
     inline constexpr FromIndexType<Index> FromIndex;
 
     template<typename Type>
-    inline constexpr bool EnableAlgebraicFor = false;
+    struct EnableAlgebraicFor : std::false_type {};
 
     template<typename Type>
-    concept AlgebraicConcept = EnableAlgebraicFor<Type>;
+    concept AlgebraicConcept = EnableAlgebraicFor<Type>::value;
 
 
     struct AlgebraicTag {};
-
-    template<typename Type> requires(std::derived_from<std::remove_cvref_t<Type>, AlgebraicTag>)
-        inline constexpr bool EnableAlgebraicFor<Type> = true;
-
+    
+    template<meta::DerivedFrom<AlgebraicTag> Type>
+    struct EnableAlgebraicFor<Type> : std::true_type {};
+     
 
     namespace detail::get
     {
