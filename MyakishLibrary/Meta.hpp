@@ -588,4 +588,27 @@ namespace myakish::meta
         template<Size ListIndex, Size ArgIndex = 0>
         struct $i : AtArg<ListIndex, ArgIndex> {};
     }
+
+
+    template<template<typename, typename> typename Comparator, typename NonList>
+    struct Sort : Undefined {};
+
+    template<template<typename, typename> typename Comparator, typename First, typename... Rest>
+    struct Sort<Comparator, TypeList<First, Rest...>>
+    {
+        using LessThanFirst = RightCurry<Comparator, First>;
+        using RestList = TypeList<Rest...>;
+
+        using Lesser = QuotedFilter<LessThanFirst, RestList>::type;
+        using Greater = QuotedFilter<QuotedNot<LessThanFirst>, RestList>::type;
+
+        using type = Concat<typename Sort<Comparator, Lesser>::type, TypeList<First>, typename Sort<Comparator, Greater>::type>::type;
+    };
+
+    template<template<typename, typename> typename Comparator>
+    struct Sort<Comparator, TypeList<>> : ReturnType<TypeList<>> {};
+
+    template<typename QuotedComparator, typename List>
+    struct QuotedSort : Sort<QuotedComparator::template Function, List> {};
+
 }
