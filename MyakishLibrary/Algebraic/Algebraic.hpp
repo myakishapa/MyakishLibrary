@@ -249,6 +249,15 @@ namespace myakish::algebraic
         }
     };
 
+    struct DirectVariadicOverloads
+    {
+        template<typename Self, AlgebraicConcept Type, typename First, typename ...Functions> requires(!ProductConcept<First>)
+        decltype(auto) operator()(this Self&& self, Type&& algebraic, First&& firstFunction, Functions&&... functions) requires requires { std::forward<Self>(self)(std::forward<Type>(algebraic), detail::ReferenceTuple(std::forward<Functions>(functions)...)); }
+        {
+            return std::forward<Self>(self)(std::forward<Type>(algebraic), detail::ReferenceTuple(std::forward<First>(firstFunction), std::forward<Functions>(functions)...));
+        }
+    };
+
 
     namespace detail
     {
@@ -875,9 +884,9 @@ namespace myakish::algebraic
     inline constexpr MapFunctor Map;
 
     template<auto Underlying>
-    struct FitFunctor : functional::ExtensionMethod, VariadicOverloads
+    struct FirstFunctor : functional::ExtensionMethod, DirectVariadicOverloads
     {
-        using VariadicOverloads::operator();
+        using DirectVariadicOverloads::operator();
 
         template<typename Arg, ProductConcept Functions>
         struct FunctionIndex
@@ -913,8 +922,8 @@ namespace myakish::algebraic
             return Underlying(std::forward<Type>(algebraic), FunctionsProxy(std::forward<Type>(algebraic), std::forward<Functions>(functions)));
         }
     };
-    inline constexpr FitFunctor<Map> FitMap;
-    inline constexpr FitFunctor<Visit> FitVisit;
+    inline constexpr FirstFunctor<Map> FirstMap;
+    inline constexpr FirstFunctor<Visit> FirstVisit;
 
 
 
@@ -1015,6 +1024,21 @@ namespace myakish::algebraic
         }
     };
     inline constexpr UnpackFunctor Unpack;
+
+
+    template<auto Underlying>
+    struct FitFunctor : functional::ExtensionMethod, DirectVariadicOverloads
+    {
+        using DirectVariadicOverloads::operator();
+
+        template<AlgebraicConcept Type, ProductConcept Functions>
+        decltype(auto) operator()(Type&& algebraic, Functions&& functions) const
+        {
+            return Underlying(std::forward<Type>(algebraic), Apply(std::forward<Functions>(functions), functional::Overload[functional::Identity, functional::Args]));
+        }
+    };
+    inline constexpr FitFunctor<Map> FitMap;
+    inline constexpr FitFunctor<Visit> FitVisit;
 
 
 

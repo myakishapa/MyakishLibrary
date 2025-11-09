@@ -367,7 +367,7 @@ namespace myakish::binary_serialization_suite
                 };
 
             out | streams::WriteAs<myakish::Size>[algebraic::Index(attribute)];
-            attribute | algebraic::FitVisit[parsers | algebraic::Map[ParseWith]];
+            attribute | algebraic::FirstVisit[parsers | algebraic::Map[ParseWith]];
         }
 
         template<streams::InputStream Stream, typename ArgAttribute>
@@ -384,8 +384,8 @@ namespace myakish::binary_serialization_suite
             auto index = in | streams::ReadTrivial<myakish::Size>;
 
             attribute = algebraic::Synthesize<ArgAttribute>(index);
-            algebraic::FitVisit(attribute, parsers | algebraic::Map[ParseWith]);
-            //attribute | algebraic::FitVisit[parsers | algebraic::Map[ParseWith]];
+            algebraic::FirstVisit(attribute, parsers | algebraic::Map[ParseWith]);
+            //attribute | algebraic::FirstVisit[parsers | algebraic::Map[ParseWith]];
         }
     };
 

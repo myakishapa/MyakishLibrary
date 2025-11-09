@@ -738,6 +738,18 @@ namespace myakish::functional
         template<typename Type>
         inline constexpr ConstructFunctor<Type> Construct;
 
+        template<template<typename...> typename Template>
+        struct DeduceConstructFunctor : ExtensionMethod
+        {
+            template<typename ...Args>
+            auto operator()(Args&&... args) const
+            {
+                return Template(std::forward<Args>(args)...);
+            }
+        };
+        template<template<typename...> typename Template>
+        inline constexpr DeduceConstructFunctor<Template> DeduceConstruct;
+
 
         template<typename Type>
         struct StaticCastFunctor : ExtensionMethod
@@ -809,5 +821,60 @@ namespace myakish::functional
     constexpr decltype(auto) operator>>(Inner inner, Outer outer)
     {
         return Compose(std::move(inner), std::move(outer));
+    }
+
+
+    namespace detail
+    {
+        template<typename Invocable>
+        struct SelectOverloader : std::type_identity<Invocable> {};
+
+        template<typename ReturnType, typename ...Args>
+        struct FunctionPointerOverloader
+        {
+            using Invocable = ReturnType(*)(Args...);
+
+            Invocable invocable;
+
+            FunctionPointerOverloader(Invocable invocable) : invocable(invocable) {}
+
+            ReturnType operator()(Args... args) const
+            {
+                return std::invoke(invocable, std::forward<Args>(args)...);
+            }
+        };
+        template<typename ReturnType, typename ...Args>
+        struct SelectOverloader<ReturnType(*)(Args...)> : meta::ReturnType<FunctionPointerOverloader<ReturnType, Args...>> {};
+
+        template<typename Class, typename Field>
+        struct MemberPointerOverloader
+        {
+            using Invocable = Field Class::*;
+
+            Invocable invocable;
+
+            MemberPointerOverloader(Invocable invocable) : invocable(invocable) {}
+
+            template<meta::SameBaseConcept<Class> Object>
+            decltype(auto) operator()(Object&& object) const
+            {
+                return std::invoke(invocable, std::forward<Object>(object));
+            }
+        };
+        template<typename Class, typename Field>
+        struct SelectOverloader<Field Class::*> : meta::ReturnType<MemberPointerOverloader<Class, Field>> {};
+    }
+
+    template<typename ...Functions>
+    struct Overloads : Functions...
+    {
+        using Functions::operator()...;
+    };
+    template<typename ...Functions>
+    Overloads(Functions...) -> Overloads<typename detail::SelectOverloader<Functions>::type...>;
+
+    inline namespace higher_order
+    {
+        inline constexpr auto Overload = DeduceConstruct<Overloads>;
     }
 }
