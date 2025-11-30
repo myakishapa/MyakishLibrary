@@ -16,27 +16,6 @@ namespace fs = std::filesystem;
 
 namespace myakish::streams
 {
-    struct ExpositionOnlyStream
-    {
-        void Seek(Size size); // Stream
-
-        bool Valid() const; // Stream
-
-        Size Length() const; // SizedStream
-
-        Size Offset() const; // AlignableStream
-
-        void Read(std::byte* dst, Size size); // InputStream
-
-        void Write(const std::byte* src, Size size); // OutputStream
-
-        void Reserve(Size reserve); // ReservableStream
-    };
-    static_assert(AlignableStream<ExpositionOnlyStream>, "ExpositionOnlyStream must be AlignableStream");
-    static_assert(SizedStream<ExpositionOnlyStream>, "ExpositionOnlyStream must be RandomAccessStream");
-    static_assert(InputStream<ExpositionOnlyStream>, "ExpositionOnlyStream must be InputStream");
-    static_assert(ReservableStream<ExpositionOnlyStream>, "ExpositionOnlyStream must be ReservableStream");
-
     template<bool Const>
     struct ContiguousStream
     {
@@ -137,10 +116,10 @@ namespace myakish::streams
             stream.Reserve(reserve);
         }
     };
-    static_assert(AlignableStream<AlignableWrapper<ExpositionOnlyStream>>, "AlignableWrapper must be AlignableStream");
-    static_assert(SizedStream<AlignableWrapper<ExpositionOnlyStream>>, "AlignableWrapper must be SizedStream");
-    static_assert(InputStream<AlignableWrapper<ExpositionOnlyStream>>, "AlignableWrapper must be InputStream");
-    static_assert(ReservableStream<AlignableWrapper<ExpositionOnlyStream>>, "AlignableWrapper must be ReservableStream");
+    static_assert(AlignableStream<AlignableWrapper<StreamArchetype>>, "AlignableWrapper must be AlignableStream");
+    static_assert(SizedStream<AlignableWrapper<SizedStreamArchetype>>, "AlignableWrapper must be SizedStream");
+    static_assert(InputStream<AlignableWrapper<InputStreamArchetype>>, "AlignableWrapper must be InputStream");
+    static_assert(ReservableStream<AlignableWrapper<ReservableStreamArchetype>>, "AlignableWrapper must be ReservableStream");
 
     struct Aligner : functional::ExtensionMethod
     {
@@ -199,10 +178,10 @@ namespace myakish::streams
             return stream.Data();
         }
     };
-    static_assert(AlignableStream<WriteOnlyWrapper<ExpositionOnlyStream>>, "WriteOnlyWrapper must be AlignableStream");
-    static_assert(SizedStream<WriteOnlyWrapper<ExpositionOnlyStream>>, "WriteOnlyWrapper must be RandomAccessStream");
-    static_assert(OutputStream<WriteOnlyWrapper<ExpositionOnlyStream>>, "WriteOnlyWrapper must be OutputStream");
-    static_assert(ReservableStream<WriteOnlyWrapper<ExpositionOnlyStream>>, "WriteOnlyWrapper must be ReservableStream");
+    static_assert(AlignableStream<WriteOnlyWrapper<CombinedArchetype<AlignableStreamArchetype, OutputStreamArchetype>>>, "WriteOnlyWrapper must be AlignableStream");
+    static_assert(SizedStream<WriteOnlyWrapper<CombinedArchetype<SizedStreamArchetype, OutputStreamArchetype>>>, "WriteOnlyWrapper must be RandomAccessStream");
+    static_assert(OutputStream<WriteOnlyWrapper<OutputStreamArchetype>>, "WriteOnlyWrapper must be OutputStream");
+    static_assert(ReservableStream<WriteOnlyWrapper<ReservableStreamArchetype>>, "WriteOnlyWrapper must be ReservableStream");
 
     struct WriteOnlyFunctor : functional::ExtensionMethod
     {

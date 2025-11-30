@@ -650,7 +650,7 @@ namespace myakish::functional
         template<typename First, typename... Rest, typename Invocable>
         constexpr decltype(auto) RightFold(Invocable&& invocable, First&& first, Rest&&... rest)
         {
-            return std::invoke(std::forward<Invocable>(invocable), first, RightFold(std::forward<Invocable>(invocable), std::forward<Rest>(rest)...));
+            return std::invoke(std::forward<Invocable>(invocable), std::forward<First>(first), RightFold(std::forward<Invocable>(invocable), std::forward<Rest>(rest)...));
         }
     }
 

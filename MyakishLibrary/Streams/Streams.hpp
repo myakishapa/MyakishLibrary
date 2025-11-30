@@ -67,6 +67,11 @@ namespace myakish::streams
         Seek(stream, size); // size > 0 only
     };
 
+    struct StreamArchetype
+    {
+        void Seek(Size size);
+    };
+    static_assert(Stream<StreamArchetype>);
 
     namespace detail::Offset
     {
@@ -113,6 +118,12 @@ namespace myakish::streams
     {
         Offset(stream);
     };
+
+    struct AlignableStreamArchetype : virtual StreamArchetype
+    {
+        Size Offset() const;
+    };
+    static_assert(AlignableStream<AlignableStreamArchetype>);
 
 
     namespace detail::Length
@@ -161,6 +172,12 @@ namespace myakish::streams
         Length(stream);
     };
 
+    struct SizedStreamArchetype : virtual StreamArchetype
+    {
+        Size Length() const;
+    };
+    static_assert(SizedStream<SizedStreamArchetype>);
+
 
     namespace detail::Read
     {
@@ -207,6 +224,12 @@ namespace myakish::streams
     {
         Read(in, data, size);
     };
+
+    struct InputStreamArchetype : virtual StreamArchetype
+    {
+        void Read(std::byte* dst, Size size);
+    };
+    static_assert(InputStream<InputStreamArchetype>);
 
 
     namespace detail::Write
@@ -255,6 +278,12 @@ namespace myakish::streams
         Write(out, data, size);
     };
 
+    struct OutputStreamArchetype : virtual StreamArchetype
+    {
+        void Write(const std::byte* src, Size size);
+    };
+    static_assert(OutputStream<OutputStreamArchetype>);
+
 
     namespace detail::Reserve
     {
@@ -302,6 +331,11 @@ namespace myakish::streams
         Reserve(out, reserve);
     };
 
+    struct ReservableStreamArchetype : virtual OutputStreamArchetype
+    {
+        void Reserve(Size reserve);
+    };
+    static_assert(ReservableStream<ReservableStreamArchetype>);
 
     namespace detail::Data
     {
@@ -348,4 +382,20 @@ namespace myakish::streams
     {
         Data(stream);
     };
+
+    struct PersistentDataStreamArchetype : virtual InputStreamArchetype, virtual SizedStreamArchetype
+    {
+        const std::byte* Data() const;
+    };
+    static_assert(PersistentDataStream<PersistentDataStreamArchetype>);
+
+    struct MutablePersistentDataStreamArchetype : virtual InputStreamArchetype, virtual SizedStreamArchetype, virtual OutputStreamArchetype
+    {
+        std::byte* Data() const;
+    };
+    static_assert(PersistentDataStream<MutablePersistentDataStreamArchetype>);
+
+
+    template<typename... Archetypes>
+    struct CombinedArchetype : virtual Archetypes... {};
 }

@@ -132,7 +132,7 @@ namespace myakish::binary_serialization_suite
         }
 
 
-        void operator()(streams::OutputStream auto&& out, meta::SameBaseConcept<Type> auto const& value) const
+        void operator()(streams::OutputStream auto&& out, Type value) const
         {
             out | streams::WriteTrivial[value];
         }

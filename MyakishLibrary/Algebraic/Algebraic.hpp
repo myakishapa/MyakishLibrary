@@ -1159,6 +1159,72 @@ namespace myakish::algebraic
     };
     inline constexpr ValuesFunctor Values;
 
+    namespace detail
+    {
+        template<myakish::Size... Indices, ProductConcept ...Products>
+        auto Zip(std::integer_sequence<myakish::Size, Indices...>, Products&&... products)
+        {
+            auto ForwardOne = [&]<myakish::Size Index>
+            {
+                return ForwardAsTuple(Get<Index>(std::forward<Products>(products))...);
+            };
+
+            return ForwardAsTuple(
+                ForwardOne.template operator()<Indices>()...
+            );
+        }
+    }
+
+    struct ZipFunctor : functional::ExtensionMethod
+    {
+        template<ProductConcept First, ProductConcept ...Rest>
+        auto operator()(First&& first, Rest&&... rest) const
+        {
+            return detail::Zip(
+                std::make_integer_sequence<myakish::Size, Count<First>>{},
+                std::forward<First>(first),
+                std::forward<Rest>(rest)...
+            );
+        }
+
+        Tuple<> operator()() const
+        {
+            return {};
+        }
+    };
+    inline constexpr ZipFunctor Zip;
+
+    /*
+    template<template<typename, typename> typename Comparator>
+    struct SortFunctor : functional::ExtensionMethod
+    {
+        template<ProductConcept Type>
+        struct ReturnType
+        {
+            using ValueTypes = ValueTypes<Type>::type;
+
+            using Indices = meta::IntegerSequence<Size, meta::Length<ValueTypes>::value>::type;
+
+            using Zipped = meta::Zip<ValueTypes, Indices>::type;
+
+            using type = meta::QuotedInvoke<meta::Instantiate<Variant>, ValueTypes>::type;
+        };
+
+        template<ProductConcept Type>
+        auto operator()(Type&& product, Size index) const
+        {
+            using ResultType = ReturnType<Type&&>::type;
+
+            auto CreateFunc = [&]<Size Index>(FromIndexType<Index>)
+            {
+                return ResultType(FromIndex<Index>, Get<Index>(std::forward<Type>(product)));
+            };
+
+            return VisitByIndex(index, FromIndex<Count<Type&&>>, CreateFunc);
+        }
+    };
+    inline constexpr SortFunctor Sort;
+    */
 
     namespace detail
     {

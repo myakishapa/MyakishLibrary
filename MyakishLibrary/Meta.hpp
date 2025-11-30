@@ -298,6 +298,13 @@ namespace myakish::meta
     namespace detail
     {
         template<typename NonList>
+        struct MaybeList : ReturnType<TypeList<NonList>> {};
+
+        template<typename ...Types>
+        struct MaybeList<TypeList<Types...>> : ReturnType<TypeList<Types...>> {};
+
+
+        template<typename NonList>
         struct BinaryZipImpl : Undefined {};
 
         template<typename ...Types1>
@@ -307,11 +314,12 @@ namespace myakish::meta
             struct With : Undefined {};
 
             template<typename ...Types2>
-            struct With<TypeList<Types2...>> : ReturnType<TypeList<TypeList<Types1, Types2>...>> {};
+            struct With<TypeList<Types2...>> : ReturnType<TypeList<typename Concat<TypeList<Types1>, typename MaybeList<Types2>::type>::type...>> {};
         };
 
         template<typename List1, typename List2>
         struct BinaryZip : BinaryZipImpl<List1>::template With<List2> {};
+
     }
 
     template<typename... Lists>
@@ -319,14 +327,26 @@ namespace myakish::meta
 
 
 
-    template<template<typename> typename Func, typename NonList>
+    template<template<typename> typename Function, typename NonList>
     struct Map : Undefined {};
 
-    template<template<typename> typename Func, typename ...Types>
-    struct Map<Func, TypeList<Types...>> : ReturnType<TypeList<typename Func<Types>::type...>> {};
+    template<template<typename> typename Function, typename ...Types>
+    struct Map<Function, TypeList<Types...>> : ReturnType<TypeList<typename Function<Types>::type...>> {};
 
     template<typename Quoted, typename List>
     struct QuotedMap : Map<Quoted::template Function, List> {};
+
+
+    template<template<typename...> typename Function, typename... Lists>
+    struct ZipWith
+    {
+        using TupleFunction = LeftCurry<QuotedInvoke, Quote<Function>>;
+
+        using type = typename QuotedMap<TupleFunction, typename Zip<Lists...>::type>::type;
+    };
+
+    template<typename Quoted, typename... Lists>
+    struct QuotedZipWith : ZipWith<Quoted::template Function, Lists...> {};
 
 
 
