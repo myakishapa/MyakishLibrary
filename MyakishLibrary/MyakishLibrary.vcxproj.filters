@@ -28,20 +28,8 @@
     <Filter Include="Header Files\HvTree">
       <UniqueIdentifier>{87ca25e0-421e-493a-92e3-1b989fcacf6c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\HvTree\Array">
-      <UniqueIdentifier>{c5b8508a-8dcf-440f-bdba-a3173c6bceab}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\HvTree\Data">
-      <UniqueIdentifier>{75d039d8-cff7-45e8-95d5-f601f269ad09}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\HvTree\Conversion">
-      <UniqueIdentifier>{3dbb6de8-745f-4e7e-a8ce-aad02c6b6831}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\HvTree\Parser">
       <UniqueIdentifier>{3f6b83f1-f157-4b86-be4a-b5b22befcced}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\HvTree\Handle">
-      <UniqueIdentifier>{13de3543-9c8c-42b3-8fe4-88576a663a4f}</UniqueIdentifier>
     </Filter>
     <Filter Include="Header Files\DependencyGraph">
       <UniqueIdentifier>{72b61a4e-fb7a-4c94-ba6f-b54aa9db0948}</UniqueIdentifier>
@@ -77,38 +65,11 @@
     <ClInclude Include="Core.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="HvTree\Array\Array.hpp">
-      <Filter>Header Files\HvTree\Array</Filter>
-    </ClInclude>
-    <ClInclude Include="HvTree\Data\DedicatedAllocation.hpp">
-      <Filter>Header Files\HvTree\Data</Filter>
-    </ClInclude>
-    <ClInclude Include="HvTree\Conversion\Conversion.hpp">
-      <Filter>Header Files\HvTree\Conversion</Filter>
-    </ClInclude>
     <ClInclude Include="HvTree\Parser\Parser.hpp">
       <Filter>Header Files\HvTree\Parser</Filter>
     </ClInclude>
     <ClInclude Include="HvTree\Parser\Spirit.hpp">
       <Filter>Header Files\HvTree\Parser</Filter>
-    </ClInclude>
-    <ClInclude Include="HvTree\Parser\Conversion.hpp">
-      <Filter>Header Files\HvTree\Parser</Filter>
-    </ClInclude>
-    <ClInclude Include="HvTree\Handle\CombinedHashHandle.hpp">
-      <Filter>Header Files\HvTree\Handle</Filter>
-    </ClInclude>
-    <ClInclude Include="HvTree\Handle\HierarchicalHandle.hpp">
-      <Filter>Header Files\HvTree\Handle</Filter>
-    </ClInclude>
-    <ClInclude Include="HvTree\Handle\StringWrapper.hpp">
-      <Filter>Header Files\HvTree\Handle</Filter>
-    </ClInclude>
-    <ClInclude Include="HvTree\Handle\WrapperComposition.hpp">
-      <Filter>Header Files\HvTree\Handle</Filter>
-    </ClInclude>
-    <ClInclude Include="HvTree\HvTree.hpp">
-      <Filter>Header Files\HvTree</Filter>
     </ClInclude>
     <ClInclude Include="DependencyGraph\Graph.hpp">
       <Filter>Header Files\DependencyGraph</Filter>
@@ -136,6 +97,12 @@
     </ClInclude>
     <ClInclude Include="Streams\Streams.hpp">
       <Filter>Header Files\Streams</Filter>
+    </ClInclude>
+    <ClInclude Include="HvTree\HvTree.hpp">
+      <Filter>Header Files\HvTree</Filter>
+    </ClInclude>
+    <ClInclude Include="HvTree\Build.hpp">
+      <Filter>Header Files\HvTree</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
