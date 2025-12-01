@@ -2,307 +2,188 @@
 
 #include <MyakishLibrary/Utility.hpp>
 
+#include <MyakishLibrary/Ranges/Utility.hpp>
+
+#include <MyakishLibrary/Functional/ExtensionMethod.hpp>
+
 #include <MyakishLibrary/Streams/Common.hpp>
+
+#include <MyakishLibrary/BinarySerializationSuite/BinarySerializationSuite.hpp>
 
 #include <memory>
 #include <map>
 #include <string_view>
+#include <ranges>
 
 namespace myakish::tree
 {
-    namespace conversion
+    template<typename Type>
+    concept HandleConcept = std::totally_ordered<Type>;
+
+    template<typename ChildrenType, typename TreeType>
+    concept TreeChildrenConcept =
+        std::ranges::random_access_range<ChildrenType> &&
+        std::ranges::sized_range<ChildrenType> &&
+        std::same_as<TreeType, std::ranges::range_value_t<ChildrenType>>;
+
+    template<typename Type>
+    concept TreeConcept = requires(Type tree)
     {
-        struct Undefined {};
-
-        template<typename Type>
-        struct HvToType
-        {
-            static inline constexpr bool UseBinary = true;
-
-            template<myakish::streams::InputStream Stream, typename ...Args>
-            static Undefined Convert(Stream&& in, Args&&... args)
-            {
-                return {};
-            }
-
-            template<typename DescriptorType, typename ...Args>
-            static Undefined Convert(DescriptorType desc, Args&&... args)
-            {
-                return {};
-            }
-        };
-        template<typename Type>
-        struct TypeToHv
-        {
-            static inline constexpr bool UseBinary = true;
-
-            template<myakish::streams::OutputStream Stream, typename ...Args>
-            static void Convert(Stream&& out, Undefined, Args&&... args)
-            {
-                return;
-            }
-
-            template<typename DescriptorType, typename ...Args>
-            static void Convert(DescriptorType desc, Undefined, Args&&... args)
-            {
-                return;
-            }
-        };
-
-    }
-
-    namespace data
-    {
-        template<typename EntryType>
-        concept Entry = requires(EntryType entry)
-        {
-            { entry.Read() } -> myakish::streams::InputStream;
-            { entry.Write() } -> myakish::streams::OutputStream;
-        };
-
-        template<typename StorageType>
-        concept Storage = requires(StorageType data)
-        {
-            typename StorageType::Entry;
-            typename StorageType::HandleFamily;
-
-            //{ handle } -> DataHandle => { data.Acquire(handle) } -> std::convertible_to<typename StorageType::Entry&>;
-            //{ handle } -> DataHandle => { data.Exists(handle) } -> std::convertible_to<bool>;
-        };
-    }
-    
-    namespace handle
-    {
-        struct NoFamily {};
-
-        template<typename Handle>
-        struct FamilyTraits
-        {
-            using Family = NoFamily;
-        };
-
-        template<typename Handle>
-        using HandleFamily = typename FamilyTraits<std::remove_cvref_t<Handle>>::Family;
-
-        template<typename Family>
-        struct NullHandle 
-        {
-            constexpr bool operator==(NullHandle) const
-            {
-                return true;
-            }
-        };
-
-        template<typename Family>
-        inline constexpr NullHandle<Family> Null;
-
-        template<typename NullFamily>
-        struct FamilyTraits<NullHandle<NullFamily>>
-        {
-            using Family = NullFamily;
-        };
-
-        template<typename Family, typename Arg>
-        decltype(auto) operator/(NullHandle<Family>, Arg&& arg)
-        {
-            return std::forward<Arg>(arg);
-        }
-        template<typename Family, typename Arg>
-        decltype(auto) operator/(Arg&& arg, NullHandle<Family>)
-        {
-            return std::forward<Arg>(arg);
-        }
-
-        template<typename HandleType>
-        concept Handle = std::copyable<std::remove_cvref_t<HandleType>> && !std::same_as<NoFamily, HandleFamily<HandleType>> && std::equality_comparable<std::remove_cvref_t<HandleType>>;
-
-        template<typename HandleType, typename Family>
-        concept HandleOf = Handle<HandleType> && std::same_as<Family, HandleFamily<HandleType>>;
-
-
-        template<typename Family, HandleOf<Family> HandleType>
-        HandleType&& ResolveADL(Family, HandleType&& handle)
-        {
-            return std::forward<HandleType>(handle);
-        }
-
-        
-        struct ResolveFunctor : functional::ExtensionMethod
-        {
-            template<typename Family, typename Type>
-            decltype(auto) operator()(Family, Type&& wrapper) const
-            {
-                return ResolveADL(Family{}, std::forward<Type>(wrapper));
-            }
-        };      
-        inline constexpr ResolveFunctor Resolve;
-
-        struct NextFunctor : functional::ExtensionMethod
-        {
-            template<Handle Type>
-            decltype(auto) operator()(const Type& handle) const
-            {
-                return NextADL(handle);
-            }
-        };
-        inline constexpr NextFunctor Next;
-
-        struct IsChildFunctor : functional::ExtensionMethod
-        {
-            template<Handle Type>
-            bool operator()(const Type& parent, const Type& child) const
-            {
-                return IsChildADL(parent, child);
-            }
-        };
-        inline constexpr IsChildFunctor IsChild;
-
-        template<typename Type>
-        concept LayeredHandle = Handle<Type> && std::totally_ordered<std::remove_cvref_t<Type>> && requires(Type handle)
-        {
-            IsChild(handle, handle);
-            { Next(handle) } -> HandleOf<HandleFamily<Type>>;
-        };
-
-
-        template<typename WrapperType, typename Family>
-        concept Wrapper = requires(WrapperType wrapper, Family familyTag)
-        {
-            { Resolve(familyTag, wrapper) } -> HandleOf<Family>;
-        };
-    }
-
-    
-    template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle>
-    class Descriptor
-    {
-    public:
-
-        using HandleFamily = typename StorageType::HandleFamily;
-
-    private:
-
-        StorageType* data;
-        Handle base;
-
-    public:
-
-        Descriptor(StorageType& data, const Handle &base) : data(&data), base(base)
-        {
-
-        }
-        Descriptor(StorageType& data) : data(&data), base{}
-        {
-
-        }
-
-        Descriptor(const Descriptor&) = default;
-
-       
-        template<typename Arg>
-        auto Subtree(Arg&& arg) const
-        {
-            //trigger CTAD
-            return myakish::tree::Descriptor(*data, base / handle::Resolve(HandleFamily{}, std::forward<Arg>(arg) ) );
-        }
-
-        template<typename Arg>
-        auto operator[](Arg&& arg) const
-        {
-            return Subtree(std::forward<Arg>(arg));
-        }
-
-        template<typename Type, typename ...Args>
-        void Store(Type&& value, Args&&... args) const
-        {
-            if constexpr (conversion::TypeToHv<std::remove_cvref_t<Type>>::UseBinary)
-            {
-                data::Entry auto&& entry = data->Acquire(base);
-                conversion::TypeToHv<std::remove_cvref_t<Type>>::Convert(entry.Write(), std::forward<Type>(value), std::forward<Args>(args)...);
-            }
-            else
-            {
-                conversion::TypeToHv<std::remove_cvref_t<Type>>::Convert(*this, std::forward<Type>(value), std::forward<Args>(args)...);
-            }
-        }
-        template<typename Type> requires (!meta::InstanceOfConcept<Type, myakish::tree::Descriptor>)
-        void operator=(Type&& value) const
-        {
-            return Store(std::forward<Type>(value));
-        }
-
-
-        template<typename Type, typename ...Args> requires (!meta::InstanceOfConcept<Type, myakish::tree::Descriptor>)
-        auto Acquire(Args&&... args) const
-        {
-            if constexpr (conversion::HvToType<Type>::UseBinary)
-            {
-                data::Entry auto&& entry = data->Acquire(base);
-                return conversion::HvToType<Type>::Convert(entry.Read(), std::forward<Args>(args)...);
-            }
-            else
-            {
-                return conversion::HvToType<Type>::Convert(*this, std::forward<Args>(args)...);
-            }
-        }
-        template<typename Type>
-        operator Type() const
-        {
-            return Acquire<Type>();
-        }
-
-        template<handle::HandleOf<HandleFamily> NewHandle>
-        auto Rebase() const
-        {
-            return myakish::tree::Descriptor(*data, static_cast<NewHandle>(handle::Resolve(HandleFamily{}, base)) );
-        }
-        template<handle::HandleOf<HandleFamily> NewHandle>
-        operator myakish::tree::Descriptor<StorageType, NewHandle>() const
-        {
-            return Rebase<NewHandle>();
-        }
-
-        Handle Base() const
-        {
-            return base;
-        }
-
-        bool Exists() const
-        {
-            return data->Exists(base);
-        }
-
-        friend bool operator==(Descriptor, Descriptor) = default;
+        { tree.Children() } -> TreeChildrenConcept<Type>;
+        { tree.Read() } -> streams::InputStream;
+        { tree.Handle() } -> HandleConcept;
     };
 
-    template<data::Storage StorageType>
-    Descriptor(StorageType&) -> Descriptor<StorageType, handle::NullHandle<typename StorageType::HandleFamily>>;
-    template<data::Storage StorageType, handle::Wrapper<typename StorageType::HandleFamily> Handle>
-    Descriptor(StorageType&, const Handle&) -> Descriptor<StorageType, Handle>;
 
-    
+    struct HandleFunctor : functional::ExtensionMethod
+    {
+        template<TreeConcept TreeType>
+        decltype(auto) operator()(const TreeType& tree) const
+        {
+            return tree.Handle();
+        }
+    };
+    inline constexpr HandleFunctor Handle;
+
+    struct ChildrenFunctor : functional::ExtensionMethod
+    {
+        template<TreeConcept TreeType>
+        decltype(auto) operator()(const TreeType& tree) const
+        {
+            return tree.Children();
+        }
+    };
+    inline constexpr ChildrenFunctor Children;
+
+    struct ReadFunctor : functional::ExtensionMethod
+    {
+        template<TreeConcept TreeType>
+        decltype(auto) operator()(const TreeType& tree) const
+        {
+            return tree.Read();
+        }
+    };
+    inline constexpr ReadFunctor Read;
+
+
+    struct AtFunctor : functional::ExtensionMethod
+    {
+        template<TreeConcept TreeType, typename HandleType>
+        auto operator()(const TreeType& tree, const HandleType& handle) const
+        {
+            return *std::ranges::lower_bound(Children(tree) | ranges::Borrow, handle, {}, Handle);
+        }
+    };
+    inline constexpr AtFunctor At;
+
+
     template<typename Type>
+    struct AcquireTraits
+    {
+
+    };
+
+    template<typename Type>
+    concept AcquireViaParser = requires(streams::InputStreamArchetype in, Type value)
+    {
+        AcquireTraits<Type>::Parser(in, value);
+    };
+
+    template<typename Type>
+    concept AcquireViaFunction = requires(streams::InputStreamArchetype in)
+    {
+        { AcquireTraits<Type>::Parse(in) } -> std::same_as<Type>;
+    };
+
+    template<typename Type>
+    concept AcquireableConcept = AcquireViaParser<Type> || AcquireViaFunction<Type>;
+
+    template<AcquireableConcept Type>
     struct AcquireFunctor : functional::ExtensionMethod
     {
-        template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle, typename ...Args>
-        Type operator()(const Descriptor<StorageType, Handle>& desc, Args&&... args) const
+        template<TreeConcept TreeType>
+        Type operator()(const TreeType& tree) const
         {
-            return desc.Acquire<Type>(std::forward<Args>(args)...);
+            if constexpr (AcquireViaParser<Type>)
+            {
+                Type into{};
+                AcquireTraits<Type>::Parser(Read(tree), into);
+                return into;
+            }
+            else if constexpr (AcquireViaFunction<Type>)
+            {
+                return AcquireTraits<Type>::Parse(Read(tree));
+            }
+            else static_assert(false);
         }
     };
-    template<typename Type>
+    template<AcquireableConcept Type>
     inline constexpr AcquireFunctor<Type> Acquire;
 
-    template<typename Type>
-    struct AcquireOrFunctor : functional::ExtensionMethod
+
+    template<meta::TriviallyCopyableConcept Trivial>
+    struct AcquireTraits<Trivial>
     {
-        template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle, typename ...Args>
-        Type operator()(const Descriptor<StorageType, Handle>& desc, Type defaultValue = {}, Args&&... args) const
+        inline constexpr static auto Parser = binary_serialization_suite::template Trivial<Trivial>;
+    };
+
+
+    template<HandleConcept StorageHandle>
+    struct Storage
+    {
+        struct Entry
         {
-            return desc.Exists() ? desc.Acquire<Type>(std::forward<Args>(args)...) : defaultValue;
+            StorageHandle handle;
+            std::vector<std::byte> data;
+            std::vector<myakish::Size> childrenOffsets;
+        };
+
+        struct EntryHandle
+        {
+            const Entry* tree;
+
+            EntryHandle() = default;
+            EntryHandle(const Entry* tree) : tree(tree) {}
+            EntryHandle(const Entry& tree) : tree(&tree) {}
+
+            const StorageHandle& Handle() const
+            {
+                return tree->handle;
+            }
+
+            auto Children() const
+            {
+                return tree->childrenOffsets | std::views::transform([&](myakish::Size offset) -> EntryHandle
+                    {
+                        return EntryHandle(tree + offset);
+                    });
+            }
+
+            auto Read() const
+            {
+                return tree->data | streams::ReadFromRange;
+            }
+        };
+
+        std::vector<Entry> entries;
+
+
+        EntryHandle Root() const
+        {
+            return entries[0];
+        }
+
+        const StorageHandle& Handle() const
+        {
+            return Root().Handle();
+        }
+
+        void BuildInto(Storage& into) const
+        {
+            into.entries.append_range(entries);
         }
     };
-    template<typename Type>
-    inline constexpr AcquireOrFunctor<Type> AcquireOr;
 
+    template<HandleConcept Handle>
+    using TreeHandle = Storage<Handle>::EntryHandle;
 }

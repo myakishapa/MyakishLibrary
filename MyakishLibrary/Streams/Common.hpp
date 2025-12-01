@@ -75,6 +75,32 @@ namespace myakish::streams
     ContiguousStream(std::byte*, const std::byte*) -> ContiguousStream<false>;
     ContiguousStream(const std::byte*, const std::byte*) -> ContiguousStream<true>;
 
+    struct VectorOutputStream
+    {
+        std::vector<std::byte>& data;
+
+        VectorOutputStream(std::vector<std::byte>& data) : data(data) {}
+
+        void Seek(myakish::Size size)
+        {
+            data.resize(data.size() + size);
+        }
+
+        void Write(const std::byte* src, myakish::Size size)
+        {
+            auto current = data.size();
+            data.resize(data.size() + size);
+            std::memcpy(data.data() + current, src, size);
+        }
+
+        void Reserve(myakish::Size reserve)
+        {
+            data.reserve(data.size() + reserve);
+        }
+    };
+    static_assert(ReservableStream<VectorOutputStream>, "VectorOutputStream must be ReservableStream");
+
+
     template<Stream Underlying>
     struct AlignableWrapper
     {

@@ -3,7 +3,6 @@
 #include <MyakishLibrary/HvTree/HvTree.hpp>
 
 #include <MyakishLibrary/HvTree/Parser/Spirit.hpp>
-#include <MyakishLibrary/HvTree/Handle/StringWrapper.hpp>
 
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
 
@@ -17,25 +16,85 @@
 
 namespace myakish::tree::parse
 {
-    template<typename Type, typename Descriptor>
-    concept ParserFor = std::invocable<const Type&, const Descriptor&, std::optional<std::string_view>, std::string_view>;
-
-    struct ParseIntoFunctor : functional::ExtensionMethod
+    template<typename Type>
+    concept Parser = requires(Type parser, streams::OutputStreamArchetype out, std::string_view value, std::optional<std::string_view> explicitType)
     {
-        template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle, ParserFor<Descriptor<StorageType, Handle>>... Parsers>
-        void operator()(const Descriptor<StorageType, Handle>& desc, const ast::AST& source, const Parsers&... parsers) const
-        {
-            if (source.value) (parsers(desc, source.explicitType, *source.value), ...);
+        { parser(out, value, explicitType) } -> std::same_as<bool>;
+    };
 
-            operator()(desc, source.entries, parsers...);
-        }
+    template<Parser First, Parser Second>
+    struct ChainParser
+    {
+        const First& first;
+        const Second& second;
 
-        template<data::Storage StorageType, handle::HandleOf<typename StorageType::HandleFamily> Handle, ParserFor<Descriptor<StorageType, Handle>>... Parsers>
-        void operator()(const Descriptor<StorageType, Handle>& desc, const ast::Entries& source, const Parsers&... parsers) const
+        ChainParser(const First& first, const Second& second) : first(first), second(second) {}
+
+        bool operator()(streams::OutputStream auto&& out, std::string_view value, std::optional<std::string_view> explicitType) const
         {
-            for (auto&& [name, entry] : source)
-                operator()(desc[handle::StringWrapper{ name }], entry, parsers...);
+            return first(out, value, explicitType) || second(out, value, explicitType);
         }
     };
-    inline constexpr ParseIntoFunctor ParseInto; 
+
+    inline constexpr auto Chain = functional::DeduceConstruct<ChainParser>;
+
+    template<typename Parser>
+    struct EntriesSource;
+
+    template<typename Parser>
+    struct ASTSource
+    {
+        using HandleType = std::string;
+
+        const ast::AST& ast;
+        const Parser& parser;
+
+        ASTSource(const ast::AST& ast, const Parser& parser) : ast(ast), parser(parser) {}
+
+        template<HandleConcept Handle>
+        ChildrenBuilder<std::string> BuildChildren(Storage<Handle>& storage) const
+        {
+            return EntriesSource(ast.entries, parser).BuildChildren(storage);
+        }
+
+        void WriteData(streams::OutputStream auto&& out) const
+        {
+            if (ast.value) parser(out, *ast.value, ast.explicitType.transform(functional::Construct<std::string_view>));
+        }
+    };
+
+    template<typename Parser>
+    struct EntriesSource
+    {
+        using HandleType = std::string;
+
+        const ast::Entries& entries;
+        const Parser& parser;
+
+        EntriesSource(const ast::Entries& entries, const Parser& parser) : entries(entries), parser(parser) {}
+
+        template<HandleConcept Handle>
+        ChildrenBuilder<std::string> BuildChildren(Storage<Handle>& storage) const
+        {
+            for (auto&& [handle, ast] : entries)
+            {
+                co_yield handle;
+
+                Build(storage, ASTSource(ast, parser) % HandleSource(handle));
+            }
+        }
+    };
+
+
+    struct IntParserType : functional::ExtensionMethod
+    {
+        void operator()(streams::OutputStream auto&& out, std::string_view value, std::optional<std::string_view> type) const
+        {
+            if (type && *type != "int") return;
+
+            if (auto result = boost::parser::parse(value, boost::parser::int_)) out | streams::WriteTrivial[*result];
+        }
+    };
+    inline constexpr IntParserType IntParser;
+
 }
