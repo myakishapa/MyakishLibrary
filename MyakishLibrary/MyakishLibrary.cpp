@@ -567,6 +567,8 @@ int main()
 
             auto storage = hv::Build(hv::parse::EntriesSource(entries, hv::parse::IntParser));
             
+            auto storage2 = hv::parse::Parse(file, hv::parse::IntParser);
+
             std::println();
         }
     }

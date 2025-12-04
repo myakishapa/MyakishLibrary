@@ -34,6 +34,13 @@ namespace myakish::tree
         { tree.Handle() } -> HandleConcept;
     };
 
+    struct TreeArchetype
+    {
+        std::vector<TreeArchetype> Children() const;
+        streams::InputStreamArchetype Read() const;
+        int Handle() const;
+    };
+
 
     struct HandleFunctor : functional::ExtensionMethod
     {
@@ -89,14 +96,21 @@ namespace myakish::tree
         AcquireTraits<Type>::Parser(in, value);
     };
 
+
     template<typename Type>
-    concept AcquireViaFunction = requires(streams::InputStreamArchetype in)
+    concept AcquireViaStreamFunction = requires(streams::InputStreamArchetype in)
     {
         { AcquireTraits<Type>::Parse(in) } -> std::same_as<Type>;
     };
 
     template<typename Type>
-    concept AcquireableConcept = AcquireViaParser<Type> || AcquireViaFunction<Type>;
+    concept AcquireViaTreeFunction = requires(TreeArchetype tree)
+    {
+        { AcquireTraits<Type>::Parse(tree) } -> std::same_as<Type>;
+    };
+
+    template<typename Type>
+    concept AcquireableConcept = AcquireViaParser<Type> || AcquireViaStreamFunction<Type>;
 
     template<AcquireableConcept Type>
     struct AcquireFunctor : functional::ExtensionMethod
@@ -110,9 +124,13 @@ namespace myakish::tree
                 AcquireTraits<Type>::Parser(Read(tree), into);
                 return into;
             }
-            else if constexpr (AcquireViaFunction<Type>)
+            else if constexpr (AcquireViaStreamFunction<Type>)
             {
                 return AcquireTraits<Type>::Parse(Read(tree));
+            }
+            else if constexpr (AcquireViaTreeFunction<Type>)
+            {
+                return AcquireTraits<Type>::Parse(tree);
             }
             else static_assert(false);
         }
@@ -122,7 +140,7 @@ namespace myakish::tree
 
 
     template<meta::TriviallyCopyableConcept Trivial>
-    struct AcquireTraits<Trivial>
+    struct AcquireTraits<Trivial> 
     {
         inline constexpr static auto Parser = binary_serialization_suite::template Trivial<Trivial>;
     };

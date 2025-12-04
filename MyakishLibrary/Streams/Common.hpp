@@ -29,9 +29,14 @@ namespace myakish::streams
         ContiguousStream(DataType* data, const std::byte* const sentinel) : data(data), sentinel(sentinel) {}
         ContiguousStream(DataType* data, Size size) : data(data), sentinel(data + size) {}
 
-        void Write(const std::byte* source, Size size) requires !Const
+        std::byte* Write(Size size) requires !Const
         {
-            std::memcpy(std::exchange(data, data + size), source, size);
+            return std::exchange(data, data + size);
+        }
+
+        const std::byte* Read(Size size)
+        {
+            return std::exchange(data, data + size);
         }
 
         void Seek(Size seek)
@@ -39,10 +44,6 @@ namespace myakish::streams
             data += seek;
         }
 
-        void Read(std::byte* dst, Size size)
-        {
-            std::memcpy(dst, std::exchange(data, data + size), size);
-        }
 
         bool Valid() const
         {
@@ -64,8 +65,8 @@ namespace myakish::streams
             return data;
         }
     };
-    static_assert(OutputStream<ContiguousStream<false>>, "non-const ContiguousStream must be OutputStream");
-    static_assert(InputStream<ContiguousStream<true>>, "const ContiguousStream must be InputStream");
+    static_assert(PointerOutputStream<ContiguousStream<false>>, "non-const ContiguousStream must be OutputStream");
+    static_assert(PointerInputStream<ContiguousStream<true>>, "const ContiguousStream must be InputStream");
     static_assert(SizedStream<ContiguousStream<true>>, "const ContiguousStream must be SizedStream");
     static_assert(PersistentDataStream<ContiguousStream<true>>, "const ContiguousStream must be PersistentDataStream");
     static_assert(!OutputStream<ContiguousStream<true>>, "const ContiguousStream must not be OutputStream");
@@ -147,7 +148,7 @@ namespace myakish::streams
     static_assert(InputStream<AlignableWrapper<InputStreamArchetype>>, "AlignableWrapper must be InputStream");
     static_assert(ReservableStream<AlignableWrapper<ReservableStreamArchetype>>, "AlignableWrapper must be ReservableStream");
 
-    struct Aligner : functional::ExtensionMethod
+    struct AlignedFunctor : functional::ExtensionMethod
     {
         auto operator()(Stream auto stream) const
         {
@@ -159,7 +160,7 @@ namespace myakish::streams
             return std::move(alignable);
         }
     };
-    inline constexpr Aligner Aligned;
+    inline constexpr AlignedFunctor Aligned;
 
 
     template<OutputStream Underlying>
@@ -171,37 +172,32 @@ namespace myakish::streams
 
         void Seek(Size size)
         {
-            stream.Seek(size);
-        }
-
-        bool Valid() const
-        {
-            return stream.Valid();
+            streams::Seek(stream, size);
         }
 
         Size Length() const requires SizedStream<Underlying>
         {
-            return stream.Length();
+            return streams::Length(stream);
         }
 
         Size Offset() const requires AlignableStream<Underlying>
         {
-            return stream.Offset();
+            return streams::Offset(stream);
         }
 
         void Write(const std::byte* src, Size size)
         {
-            stream.Write(src, size);
+            streams::Write(stream, src, size);
         }
 
         void Reserve(Size reserve) requires ReservableStream<Underlying>
         {
-            stream.Reserve(reserve);
+            streams::Reserve(stream, reserve);
         }
 
         auto Data() const requires PersistentDataStream<Underlying>
         {
-            return stream.Data();
+            return streams::Data(stream);
         }
     };
     static_assert(AlignableStream<WriteOnlyWrapper<CombinedArchetype<AlignableStreamArchetype, OutputStreamArchetype>>>, "WriteOnlyWrapper must be AlignableStream");
@@ -209,14 +205,7 @@ namespace myakish::streams
     static_assert(OutputStream<WriteOnlyWrapper<OutputStreamArchetype>>, "WriteOnlyWrapper must be OutputStream");
     static_assert(ReservableStream<WriteOnlyWrapper<ReservableStreamArchetype>>, "WriteOnlyWrapper must be ReservableStream");
 
-    struct WriteOnlyFunctor : functional::ExtensionMethod
-    {
-        auto operator()(OutputStream auto stream) const
-        {
-            return WriteOnlyWrapper(std::move(stream));
-        }
-    };
-    inline constexpr WriteOnlyFunctor WriteOnly;
+    inline constexpr auto WriteOnly = functional::DeduceConstruct<WriteOnlyWrapper>;
 
     
     struct StandardOutputStream
@@ -368,22 +357,28 @@ namespace myakish::streams
     {
         virtual void Seek(Size size) const = 0; // Stream
         
-        virtual bool Valid() const = 0; // Stream
-
         virtual Size Length() const = 0; // SizedStream
 
         virtual Size Offset() const = 0; // AlignableStream
 
         virtual void Read(std::byte* dst, Size size) const = 0; // InputStream
 
+        virtual const std::byte* Read(Size size) const = 0; // PointerInputStream
+
         virtual void Write(const std::byte* src, Size size) const = 0; // OutputStream
 
+        virtual std::byte* Write(Size size) const = 0; // PointerOutputStream
+
         virtual void Reserve(Size reserve) const = 0; // ReservableStream
+
+        virtual std::byte* Data() const = 0; // PersistentDataStream
     };
     static_assert(AlignableStream<PolymorphicStreamBase>, "PolymorphicStreamBase must be AlignableStream");
-    static_assert(SizedStream<PolymorphicStreamBase>, "PolymorphicStreamBase must be RandomAccessStream");
-    static_assert(InputStream<PolymorphicStreamBase>, "PolymorphicStreamBase must be InputStream");
+    static_assert(SizedStream<PolymorphicStreamBase>, "PolymorphicStreamBase must be SizedStream");
+    static_assert(PointerInputStream<PolymorphicStreamBase>, "PolymorphicStreamBase must be PointerInputStream");
+    static_assert(PointerOutputStream<PolymorphicStreamBase>, "PolymorphicStreamBase must be PointerOutputStream");
     static_assert(ReservableStream<PolymorphicStreamBase>, "PolymorphicStreamBase must be ReservableStream");
+    static_assert(PersistentDataStream<PolymorphicStreamBase>, "PolymorphicStreamBase must be PersistentDataStream");
 
     template<Stream Underlying>
     struct PolymorphicStream : PolymorphicStreamBase
@@ -394,41 +389,55 @@ namespace myakish::streams
 
         virtual void Seek(Size size) const override
         {
-            stream.Seek(size);
+            streams::Seek(stream, size);
         }
 
-        virtual bool Valid() const override
-        {
-            return stream.Valid();
-        }
 
         virtual Size Length() const override
         {
-            if constexpr (SizedStream<Underlying>) return stream.Length();
+            if constexpr (SizedStream<Underlying>) return streams::Length(stream);
             else std::terminate();
         }
 
         virtual Size Offset() const override
         {
-            if constexpr (AlignableStream<Underlying>) return stream.Offset();
+            if constexpr (AlignableStream<Underlying>) return streams::Offset(stream);
             else std::terminate();
         }
 
         virtual void Read(std::byte* dst, Size size) const override
         {
-            if constexpr (InputStream<Underlying>) stream.Read(dst, size);
+            if constexpr (InputStream<Underlying>) streams::Read(stream, dst, size);
+            else std::terminate();
+        }
+
+        virtual const std::byte* Read(Size size) const override
+        {
+            if constexpr (PointerInputStream<Underlying>) return streams::Read(stream, size);
             else std::terminate();
         }
 
         virtual void Write(const std::byte* src, Size size) const override
         {
-            if constexpr (OutputStream<Underlying>) stream.Write(src, size);
+            if constexpr (OutputStream<Underlying>) streams::Write(stream, src, size);
+            else std::terminate();
+        }
+
+        virtual std::byte* Write(Size size) const override
+        {
+            if constexpr (PointerOutputStream<Underlying>) return streams::Write(stream, size);
             else std::terminate();
         }
 
         virtual void Reserve(Size reserve) const override
         {
-            if constexpr (ReservableStream<Underlying>) stream.Reserve(reserve);
+            if constexpr (ReservableStream<Underlying>) streams::Reserve(stream, reserve);
+            else std::terminate();
+        }
+
+        virtual std::byte* Data() const override
+        {
+            if constexpr (PersistentDataStream<Underlying>) return const_cast<std::byte*>(streams::Data(stream));
             else std::terminate();
         }
     };
@@ -436,14 +445,8 @@ namespace myakish::streams
     template<Stream Underlying>
     PolymorphicStream(Underlying&&) -> PolymorphicStream<Underlying&&>;
 
-    struct Polymorphizer : functional::ExtensionMethod
-    {
-        auto operator()(Stream auto &&stream) const
-        {
-            return PolymorphicStream(std::forward<decltype(stream)>(stream));
-        }
-    };
-    inline constexpr Polymorphizer Polymorphize;
+    inline constexpr auto Polymorphize = functional::DeduceConstruct<PolymorphicStream>;
+
 
     template<std::ranges::input_range Range>
     struct RangeInputStream

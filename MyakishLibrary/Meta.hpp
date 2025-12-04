@@ -631,4 +631,10 @@ namespace myakish::meta
     template<typename QuotedComparator, typename List>
     struct QuotedSort : Sort<QuotedComparator::template Function, List> {};
 
+
+    template<typename From, typename To>
+    concept ConvertibleToConcept = requires(From && from)
+    {
+        static_cast<To>(std::forward<From>(from));
+    };
 }

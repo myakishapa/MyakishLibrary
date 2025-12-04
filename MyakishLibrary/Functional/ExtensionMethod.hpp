@@ -754,7 +754,7 @@ namespace myakish::functional
         template<typename Type>
         struct StaticCastFunctor : ExtensionMethod
         {
-            template<std::convertible_to<Type> Arg>
+            template<meta::ConvertibleToConcept<Type> Arg>
             constexpr auto operator()(Arg&& arg) const
             {
                 return static_cast<Type>(std::forward<Arg>(arg));

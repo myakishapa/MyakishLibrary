@@ -1,6 +1,6 @@
 #pragma once
 
-#include <MyakishLibrary/HvTree/HvTree.hpp>
+#include <MyakishLibrary/HvTree/Build.hpp>
 
 #include <MyakishLibrary/HvTree/Parser/Spirit.hpp>
 
@@ -17,12 +17,12 @@
 namespace myakish::tree::parse
 {
     template<typename Type>
-    concept Parser = requires(Type parser, streams::OutputStreamArchetype out, std::string_view value, std::optional<std::string_view> explicitType)
+    concept ParserConcept = requires(Type parser, streams::OutputStreamArchetype out, std::string_view value, std::optional<std::string_view> explicitType)
     {
         { parser(out, value, explicitType) } -> std::same_as<bool>;
     };
 
-    template<Parser First, Parser Second>
+    template<ParserConcept First, ParserConcept Second>
     struct ChainParser
     {
         const First& first;
@@ -35,13 +35,15 @@ namespace myakish::tree::parse
             return first(out, value, explicitType) || second(out, value, explicitType);
         }
     };
+    template<ParserConcept First, ParserConcept Second>
+    ChainParser(const First&, const Second&) -> ChainParser<First, Second>;
 
     inline constexpr auto Chain = functional::DeduceConstruct<ChainParser>;
 
-    template<typename Parser>
+    template<ParserConcept Parser>
     struct EntriesSource;
 
-    template<typename Parser>
+    template<ParserConcept Parser>
     struct ASTSource
     {
         using HandleType = std::string;
@@ -63,7 +65,7 @@ namespace myakish::tree::parse
         }
     };
 
-    template<typename Parser>
+    template<ParserConcept Parser>
     struct EntriesSource
     {
         using HandleType = std::string;
@@ -88,13 +90,31 @@ namespace myakish::tree::parse
 
     struct IntParserType : functional::ExtensionMethod
     {
-        void operator()(streams::OutputStream auto&& out, std::string_view value, std::optional<std::string_view> type) const
+        bool operator()(streams::OutputStream auto&& out, std::string_view value, std::optional<std::string_view> type) const
         {
-            if (type && *type != "int") return;
+            if (type && *type != "int") return false;
 
-            if (auto result = boost::parser::parse(value, boost::parser::int_)) out | streams::WriteTrivial[*result];
+            if (auto result = boost::parser::parse(value, boost::parser::int_))
+            {
+                out | streams::WriteTrivial[*result];
+                return true;
+            }
+            return false;
         }
     };
     inline constexpr IntParserType IntParser;
 
+
+    struct ParseFunctor : functional::ExtensionMethod
+    {
+        template<boost::parser::parsable_range Range, ParserConcept... Parsers>
+        auto operator()(Range&& range, const Parsers... parsers) const
+        {
+            return Build(EntriesSource(
+                ast::Parse(range),
+                functional::RightFold(Chain, parsers...)
+            ));
+        }
+    };
+    inline constexpr ParseFunctor Parse;
 }

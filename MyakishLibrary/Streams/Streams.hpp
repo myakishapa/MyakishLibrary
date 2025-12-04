@@ -48,14 +48,14 @@ namespace myakish::streams
     struct SeekFunctor : functional::ExtensionMethod
     {
         template<typename Stream> requires(detail::Seek::ChooseStrategy<Stream>() != detail::Strategy::None)
-            decltype(auto) operator()(Stream&& stream, Size direction) const
+        void operator()(Stream&& stream, Size direction) const
         {
             constexpr auto Strategy = detail::Seek::ChooseStrategy<Stream>();
 
             using enum detail::Strategy;
 
-            if constexpr (Strategy == Member) return stream.Seek(direction);
-            else if constexpr (Strategy == ADL) return SeekADL<Stream>(stream, direction);
+            if constexpr (Strategy == Member) stream.Seek(direction);
+            else if constexpr (Strategy == ADL) SeekADL<Stream>(stream, direction);
             else static_assert(false);
         }
     };
@@ -72,6 +72,9 @@ namespace myakish::streams
         void Seek(Size size);
     };
     static_assert(Stream<StreamArchetype>);
+
+
+
 
     namespace detail::Offset
     {
@@ -100,7 +103,7 @@ namespace myakish::streams
     struct OffsetFunctor : functional::ExtensionMethod
     {
         template<typename Stream> requires(detail::Offset::ChooseStrategy<Stream>() != detail::Strategy::None)
-            decltype(auto) operator()(Stream&& stream) const
+        Size operator()(Stream&& stream) const
         {
             constexpr auto Strategy = detail::Offset::ChooseStrategy<Stream>();
 
@@ -124,6 +127,8 @@ namespace myakish::streams
         Size Offset() const;
     };
     static_assert(AlignableStream<AlignableStreamArchetype>);
+
+
 
 
     namespace detail::Length
@@ -153,7 +158,7 @@ namespace myakish::streams
     struct LengthFunctor : functional::ExtensionMethod
     {
         template<typename Stream> requires(detail::Length::ChooseStrategy<Stream>() != detail::Strategy::None)
-            decltype(auto) operator()(Stream&& stream) const
+        Size operator()(Stream&& stream) const
         {
             constexpr auto Strategy = detail::Length::ChooseStrategy<Stream>();
 
@@ -179,60 +184,10 @@ namespace myakish::streams
     static_assert(SizedStream<SizedStreamArchetype>);
 
 
-    namespace detail::Read
-    {
-        template<typename Stream>
-        concept HasMember = requires(Stream && stream, std::byte * data, Size size)
-        {
-            { stream.Read(data, size) };
-        };
-
-        template<typename Stream>
-        concept HasADL = requires(Stream && stream, std::byte * data, Size size)
-        {
-            { ReadADL<Stream>(stream, data, size) };
-        };
-
-        template<typename Stream>
-        consteval static Strategy ChooseStrategy()
-        {
-            using enum Strategy;
-
-            if constexpr (HasMember<Stream>) return Member;
-            else if constexpr (HasADL<Stream>) return ADL;
-            else return None;
-        }
-    }
-    struct ReadFunctor : functional::ExtensionMethod
-    {
-        template<typename Stream> requires(detail::Read::ChooseStrategy<Stream>() != detail::Strategy::None)
-            decltype(auto) operator()(Stream&& stream, std::byte* data, Size size) const
-        {
-            constexpr auto Strategy = detail::Read::ChooseStrategy<Stream>();
-
-            using enum detail::Strategy;
-
-            if constexpr (Strategy == Member) return stream.Read(data, size);
-            else if constexpr (Strategy == ADL) return ReadADL<Stream>(stream, data, size);
-            else static_assert(false);
-        }
-    };
-    inline constexpr ReadFunctor Read;
-
-    template<typename Type>
-    concept InputStream = Stream<Type> && requires(Type&& in, std::byte* data, Size size)
-    {
-        Read(in, data, size);
-    };
-
-    struct InputStreamArchetype : virtual StreamArchetype
-    {
-        void Read(std::byte* dst, Size size);
-    };
-    static_assert(InputStream<InputStreamArchetype>);
 
 
-    namespace detail::Write
+    
+    namespace detail::WriteInto
     {
         template<typename Stream>
         concept HasMember = requires(Stream && stream, const std::byte * data, Size size)
@@ -256,17 +211,57 @@ namespace myakish::streams
             else return None;
         }
     }
+    namespace detail::Write
+    {
+        template<typename Stream>
+        concept HasMember = requires(Stream && stream, Size size)
+        {
+            { stream.Write(size) } -> std::convertible_to<std::byte*>;
+        };
+
+        template<typename Stream>
+        concept HasADL = requires(Stream && stream, Size size)
+        {
+            { WriteADL<Stream>(stream, size) } -> std::convertible_to<std::byte*>;
+        };
+
+        template<typename Stream>
+        consteval static Strategy ChooseStrategy()
+        {
+            using enum Strategy;
+
+            if constexpr (HasMember<Stream>) return Member;
+            else if constexpr (HasADL<Stream>) return ADL;
+            else return None;
+        }
+    }
     struct WriteFunctor : functional::ExtensionMethod
     {
         template<typename Stream> requires(detail::Write::ChooseStrategy<Stream>() != detail::Strategy::None)
-            decltype(auto) operator()(Stream&& stream, const std::byte* data, Size size) const
+        std::byte* operator()(Stream&& stream, Size size) const
         {
             constexpr auto Strategy = detail::Write::ChooseStrategy<Stream>();
 
             using enum detail::Strategy;
 
-            if constexpr (Strategy == Member) return stream.Write(data, size);
-            else if constexpr (Strategy == ADL) return WriteADL<Stream>(stream, data, size);
+            if constexpr (Strategy == Member) return stream.Write(size);
+            else if constexpr (Strategy == ADL) return WriteADL<Stream>(stream, size);
+            else static_assert(false);
+        }
+
+        template<typename Stream> requires((detail::WriteInto::ChooseStrategy<Stream>() != detail::Strategy::None) || (detail::Write::ChooseStrategy<Stream>() != detail::Strategy::None))
+        void operator()(Stream && stream, const std::byte * data, Size size) const
+        {
+            constexpr auto Strategy = detail::WriteInto::ChooseStrategy<Stream>();
+
+            using enum detail::Strategy;
+
+            if constexpr (Strategy == Member) stream.Write(data, size);
+            else if constexpr (Strategy == ADL) WriteADL<Stream>(stream, data, size);
+            else if constexpr (detail::Write::ChooseStrategy<Stream>() != detail::Strategy::None)
+            {
+                std::memcpy(operator()(stream, size), data, size);
+            }
             else static_assert(false);
         }
     };
@@ -283,6 +278,140 @@ namespace myakish::streams
         void Write(const std::byte* src, Size size);
     };
     static_assert(OutputStream<OutputStreamArchetype>);
+
+
+    template<typename Type>
+    concept PointerOutputStream = OutputStream<Type> && requires(Type && out, Size size)
+    {
+        Write(out, size);
+    };
+
+    struct PointerOutputStreamArchetype : virtual OutputStreamArchetype
+    {
+        using OutputStreamArchetype::Write;
+
+        std::byte* Write(Size size);
+    };
+    static_assert(PointerOutputStream<PointerOutputStreamArchetype>);
+
+
+
+
+
+    namespace detail::ReadInto
+    {
+        template<typename Stream>
+        concept HasMember = requires(Stream && stream, std::byte * data, Size size)
+        {
+            { stream.Read(data, size) };
+        };
+
+        template<typename Stream>
+        concept HasADL = requires(Stream && stream, std::byte * data, Size size)
+        {
+            { ReadADL<Stream>(stream, data, size) };
+        };
+
+        template<typename Stream>
+        consteval static Strategy ChooseStrategy()
+        {
+            using enum Strategy;
+
+            if constexpr (HasMember<Stream>) return Member;
+            else if constexpr (HasADL<Stream>) return ADL;
+            else return None;
+        }
+    }
+    namespace detail::Read
+    {
+        template<typename Stream>
+        concept HasMember = requires(Stream && stream, Size size)
+        {
+            { stream.Read(size) } -> std::convertible_to<const std::byte*>;
+        };
+
+        template<typename Stream>
+        concept HasADL = requires(Stream && stream, Size size)
+        {
+            { ReadADL<Stream>(stream, size) } -> std::convertible_to<const std::byte*>;
+        };
+
+        template<typename Stream>
+        consteval static Strategy ChooseStrategy()
+        {
+            using enum Strategy;
+
+            if constexpr (HasMember<Stream>) return Member;
+            else if constexpr (HasADL<Stream>) return ADL;
+            else return None;
+        }
+    }
+    struct ReadFunctor : functional::ExtensionMethod
+    {
+        template<typename Stream> requires((detail::Read::ChooseStrategy<Stream>() != detail::Strategy::None) || PointerOutputStream<Stream>)
+        const std::byte* operator()(Stream&& stream, Size size) const
+        {
+            constexpr auto Strategy = detail::Read::ChooseStrategy<Stream>();
+
+            using enum detail::Strategy;
+
+            if constexpr (Strategy == Member) return stream.Read(size);
+            else if constexpr (Strategy == ADL) return ReadADL<Stream>(stream, size);
+            else if constexpr (PointerOutputStream<Stream>) return Write(stream, size);
+            else static_assert(false);
+        }
+
+        template<typename Stream> requires((detail::ReadInto::ChooseStrategy<Stream>() != detail::Strategy::None) || (detail::Read::ChooseStrategy<Stream>() != detail::Strategy::None))
+        void operator()(Stream&& stream, std::byte* data, Size size) const
+        {
+            constexpr auto Strategy = detail::ReadInto::ChooseStrategy<Stream>();
+
+            using enum detail::Strategy;
+
+            if constexpr (Strategy == Member) stream.Read(data, size);
+            else if constexpr (Strategy == ADL) ReadADL<Stream>(stream, data, size);
+            else if constexpr (detail::Read::ChooseStrategy<Stream>() != detail::Strategy::None)
+            {
+                std::memcpy(data, operator()(stream, size), size);
+            }
+            else static_assert(false);
+        }
+    };
+    inline constexpr ReadFunctor Read;
+
+    template<typename Type>
+    concept InputStream = Stream<Type> && requires(Type&& in, std::byte* data, Size size)
+    {
+        Read(in, data, size);
+    };
+
+    struct InputStreamArchetype : virtual StreamArchetype
+    {
+        void Read(std::byte* dst, Size size);
+    };
+    static_assert(InputStream<InputStreamArchetype>);
+
+
+    template<typename Type>
+    concept PointerInputStream = InputStream<Type> && requires(Type && in, Size size)
+    {
+        Read(in, size);
+    };
+
+    struct PointerInputStreamArchetype : virtual InputStreamArchetype
+    {
+        using InputStreamArchetype::Read;
+
+        const std::byte* Read(Size size);
+    };
+    static_assert(PointerInputStream<PointerInputStreamArchetype>);
+
+
+
+
+
+
+
 
 
     namespace detail::Reserve
@@ -312,14 +441,14 @@ namespace myakish::streams
     struct ReserveFunctor : functional::ExtensionMethod
     {
         template<typename Stream> requires(detail::Reserve::ChooseStrategy<Stream>() != detail::Strategy::None)
-            decltype(auto) operator()(Stream&& stream, Size reserve) const
+        void operator()(Stream&& stream, Size reserve) const
         {
             constexpr auto Strategy = detail::Reserve::ChooseStrategy<Stream>();
 
             using enum detail::Strategy;
 
-            if constexpr (Strategy == Member) return stream.Reserve(reserve);
-            else if constexpr (Strategy == ADL) return ReserveADL<Stream>(stream, reserve);
+            if constexpr (Strategy == Member) stream.Reserve(reserve);
+            else if constexpr (Strategy == ADL) ReserveADL<Stream>(stream, reserve);
             else static_assert(false);
         }
     };
@@ -336,6 +465,9 @@ namespace myakish::streams
         void Reserve(Size reserve);
     };
     static_assert(ReservableStream<ReservableStreamArchetype>);
+
+
+
 
     namespace detail::Data
     {
@@ -378,18 +510,18 @@ namespace myakish::streams
     inline constexpr DataFunctor Data;
 
     template<typename Type>
-    concept PersistentDataStream = InputStream<Type> && SizedStream<Type> && requires(Type&& stream)
+    concept PersistentDataStream = PointerInputStream<Type> && SizedStream<Type> && requires(Type&& stream)
     {
         Data(stream);
     };
 
-    struct PersistentDataStreamArchetype : virtual InputStreamArchetype, virtual SizedStreamArchetype
+    struct PersistentDataStreamArchetype : virtual PointerInputStreamArchetype, virtual SizedStreamArchetype
     {
         const std::byte* Data() const;
     };
     static_assert(PersistentDataStream<PersistentDataStreamArchetype>);
 
-    struct MutablePersistentDataStreamArchetype : virtual InputStreamArchetype, virtual SizedStreamArchetype, virtual OutputStreamArchetype
+    struct MutablePersistentDataStreamArchetype : virtual PointerInputStreamArchetype, virtual SizedStreamArchetype, virtual OutputStreamArchetype
     {
         std::byte* Data() const;
     };
