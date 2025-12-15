@@ -1076,7 +1076,7 @@ namespace myakish::algebraic
                 };
             };
 
-            return Apply(std::forward<Type>(product) | Map[Transform], functional::IndirectAccumulate[functional::Construct<ResultType>, functional::Args]);
+            return Apply(std::forward<Type>(product) | Map[Transform], functional::AccumulateSource[functional::Construct<ResultType>, functional::Args]);
         }
 
 
@@ -1247,24 +1247,35 @@ namespace myakish::algebraic
                     return algebraic::Visit(std::forward<Arg>(arg), std::forward<Continuation>(continuation));
                 };
             }
+
+            template<ProductConcept Arg>
+            constexpr auto operator()(Arg&& arg) const
+            {
+                return[&]<typename Continuation> (Continuation && continuation) -> decltype(auto) requires requires { algebraic::Apply(std::forward<Arg>(arg), std::forward<Continuation>(continuation)); }
+                {
+                    return algebraic::Apply(std::forward<Arg>(arg), std::forward<Continuation>(continuation));
+                };
+            }
         };
         inline constexpr UnpackLambdaTransformType UnpackLambdaTransform;
     }
 
     
-    struct LambdaUnpackFunctor : functional::ExtensionMethod, functional::DisableLambdaOperatorsTag
+    struct UnpackLambdaFunctor : functional::ExtensionMethod, functional::DisableLambdaOperatorsTag
     {
         template<functional::LambdaExpressionConcept Expression>
-        constexpr auto operator()(Expression expression) const
+        constexpr auto operator()(Expression&& expression) const
         {
-            return functional::LambdaTransform(std::move(expression), detail::UnpackLambdaTransform);
+            return functional::BindLambda(std::forward<Expression>(expression), detail::UnpackLambdaTransform);
         }
     };
-    inline constexpr LambdaUnpackFunctor LambdaUnpack;
+    inline constexpr UnpackLambdaFunctor UnpackLambda;
 
     template<myakish::Size ArgIndex>
-    inline constexpr auto Arg = functional::Arg<ArgIndex> | LambdaUnpack;
-
+    inline constexpr auto Arg = functional::Arg<ArgIndex> | UnpackLambda;
+    
+    template<myakish::Size ValueIndex, myakish::Size ArgIndex = 0>
+    inline constexpr auto AtArg = Get<ValueIndex>[functional::Arg<ArgIndex>];
 }
 
 namespace myakish::functional
@@ -1284,12 +1295,22 @@ namespace myakish::functional
 
 namespace myakish::functional::shorthands
 {
-    inline constexpr auto $a0 = algebraic::Arg<0>;
-    inline constexpr auto $a1 = algebraic::Arg<1>;
-    inline constexpr auto $a2 = algebraic::Arg<2>;
-    inline constexpr auto $a3 = algebraic::Arg<3>;
-    inline constexpr auto $a4 = algebraic::Arg<4>;
-    inline constexpr auto $a5 = algebraic::Arg<5>;
-    inline constexpr auto $a6 = algebraic::Arg<6>;
-    inline constexpr auto $a7 = algebraic::Arg<7>;
+    inline constexpr auto $0a = algebraic::Arg<0>;
+    inline constexpr auto $1a = algebraic::Arg<1>;
+    inline constexpr auto $2a = algebraic::Arg<2>;
+    inline constexpr auto $3a = algebraic::Arg<3>;
+    inline constexpr auto $4a = algebraic::Arg<4>;
+    inline constexpr auto $5a = algebraic::Arg<5>;
+    inline constexpr auto $6a = algebraic::Arg<6>;
+    inline constexpr auto $7a = algebraic::Arg<7>;
+
+    inline constexpr auto $0i0 = algebraic::AtArg<0, 0>;
+    inline constexpr auto $0i1 = algebraic::AtArg<1, 0>;
+    inline constexpr auto $0i2 = algebraic::AtArg<2, 0>;
+    inline constexpr auto $0i3 = algebraic::AtArg<3, 0>;
+
+    inline constexpr auto $1i0 = algebraic::AtArg<0, 1>;
+    inline constexpr auto $1i1 = algebraic::AtArg<1, 1>;
+    inline constexpr auto $1i2 = algebraic::AtArg<2, 1>;
+    inline constexpr auto $1i3 = algebraic::AtArg<3, 1>;
 }

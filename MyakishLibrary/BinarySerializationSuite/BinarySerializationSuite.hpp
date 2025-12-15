@@ -384,8 +384,7 @@ namespace myakish::binary_serialization_suite
             auto index = in | streams::ReadTrivial<myakish::Size>;
 
             attribute = algebraic::Synthesize<ArgAttribute>(index);
-            algebraic::FirstVisit(attribute, parsers | algebraic::Map[ParseWith]);
-            //attribute | algebraic::FirstVisit[parsers | algebraic::Map[ParseWith]];
+            attribute | algebraic::FirstVisit[parsers | algebraic::Map[ParseWith]];
         }
     };
 

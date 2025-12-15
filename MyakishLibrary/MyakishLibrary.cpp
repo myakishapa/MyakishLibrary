@@ -506,6 +506,7 @@ int main()
             std::println();
         }
     }
+    
 
     // functional
     {
@@ -525,6 +526,26 @@ int main()
         {
             constexpr auto test = hof::RightFold(hof::Plus, 1);
             constexpr auto test3 = hof::RightFold(hof::Plus, 1, 2, 3);
+        }
+
+        // lambdas
+        {
+            auto l = hof::RightFold[hof::Plus, $0a];
+
+
+            std::tuple t(1, 2, 3, 4);
+            std::tuple t2(5, 6, 7, 8);
+
+            auto fgldkh = l(t);
+
+            auto l2 = hof::Plus[$0i2, $1i3];
+
+            auto df = alg::Get<0>(t);
+
+            auto gfkdj = l2(t, t2);
+            //auto gfkdj = l2(t);
+
+            std::println();
         }
     }
 
