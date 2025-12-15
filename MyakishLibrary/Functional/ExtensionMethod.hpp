@@ -6,7 +6,7 @@
 
 namespace myakish::functional
 {
-    
+
     template<typename Type>
     struct LambdaExpression : std::false_type {};
 
@@ -15,7 +15,7 @@ namespace myakish::functional
 
 
     template<typename Lambda, typename ArgsTuple>
-    concept Resolvable = LambdaExpressionConcept<Lambda> && requires(Lambda&& resolver, const ArgsTuple& tuple)
+    concept Resolvable = LambdaExpressionConcept<Lambda> && requires(Lambda && resolver, const ArgsTuple & tuple)
     {
         std::forward<Lambda>(resolver).IntoSource(tuple);
     };
@@ -67,7 +67,7 @@ namespace myakish::functional
         template<typename Self, typename ArgsTuple>
         constexpr decltype(auto) IntoSource(this Self&& self, const ArgsTuple& tuple)
         {
-            return[&]<typename Invocable>(Invocable && target) -> decltype(auto) 
+            return[&]<typename Invocable>(Invocable && target) -> decltype(auto)
                 requires requires { std::forward<Self>(self).LambdaResolve(std::forward<Invocable>(target), tuple); }
             {
                 return std::forward<Self>(self).LambdaResolve(std::forward<Invocable>(target), tuple);
@@ -102,7 +102,7 @@ namespace myakish::functional
     struct RangePlaceholder : LambdaViaResolve
     {
         template<typename Invocable, typename ArgsTuple> requires detail::ForwardingApplicable<Invocable, ArgsTuple>
-        constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple& argsTuple) const 
+        constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple& argsTuple) const
         {
             return detail::ForwardingApply(std::forward<Invocable>(invocable), argsTuple);
         }
@@ -140,7 +140,7 @@ namespace myakish::functional
         }
 
         template<std::invocable<Value&&> Invocable, typename ArgsTuple>
-        constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple&) &&
+        constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple&)&&
         {
             return std::invoke(std::forward<Invocable>(invocable), std::move(value));
         }
@@ -170,7 +170,7 @@ namespace myakish::functional
         template<typename NonLambda>
         constexpr auto MakeExpression(NonLambda&& value)
         {
-            if constexpr(std::is_lvalue_reference_v<NonLambda>) return ReferenceConstantExpression(std::forward<NonLambda>(value));
+            if constexpr (std::is_lvalue_reference_v<NonLambda>) return ReferenceConstantExpression(std::forward<NonLambda>(value));
             else return ValueConstantExpression(std::forward<NonLambda>(value));
         }
 
@@ -200,9 +200,9 @@ namespace myakish::functional
             constexpr decltype(auto) operator()(Args&&... args) const
             {
                 auto InvokeTarget = [&](Bound&&... resolvedBound) -> decltype(auto)
-                {
-                    return std::invoke(std::forward<Invocable>(invocable), std::forward<Bound>(resolvedBound)..., std::forward<Args>(args)...);
-                };
+                    {
+                        return std::invoke(std::forward<Invocable>(invocable), std::forward<Bound>(resolvedBound)..., std::forward<Args>(args)...);
+                    };
 
                 return detail::ForwardingApply(InvokeTarget, bound);
             }
@@ -260,7 +260,7 @@ namespace myakish::functional
             template<typename Continuation> requires Resolvable<Resolver&&, Continuation&&, const ArgsTuple&>
             constexpr decltype(auto) operator()(Continuation&& continuation) const
             {
-                return resolver.LambdaResolve(std::forward<Continuation>(continuation), argsTuple);         
+                return resolver.LambdaResolve(std::forward<Continuation>(continuation), argsTuple);
             }
         };
         template<LambdaExpressionConcept Resolver, typename ArgsTuple>
@@ -272,7 +272,7 @@ namespace myakish::functional
             return AccumulateSource(std::forward<Invocable>(invocable), std::forward<Resolvers>(resolvers).IntoSource(argsTuple)...);
         }
 
-        template<typename Invocable, typename ArgsTuple, typename ...Resolvers> 
+        template<typename Invocable, typename ArgsTuple, typename ...Resolvers>
         concept LambdaInvocable = requires(Invocable && invocable, const ArgsTuple & argsTuple, Resolvers&&... resolvers)
         {
             LambdaInvoke(std::forward<Invocable>(invocable), argsTuple, std::forward<Resolvers>(resolvers)...);
@@ -307,6 +307,19 @@ namespace myakish::functional
 
     template<typename Invocable, typename ...ArgResolvers>
     LambdaClosure(Invocable&&, ArgResolvers...) -> LambdaClosure<Invocable&&, ArgResolvers...>;
+
+
+    template<typename Type>
+    struct LambdaOperand : std::true_type {};
+
+    template<typename Type>
+    concept LambdaOperandConcept = LambdaOperand<std::remove_cvref_t<Type>>::value;
+
+
+    struct DisableLambdaOperatorsTag {};
+
+    template<std::derived_from<DisableLambdaOperatorsTag> Type>
+    struct LambdaOperand<Type> : std::false_type {};
 
 
     template<typename Invocable, typename ...CurryArgs>
@@ -350,6 +363,8 @@ namespace myakish::functional
     template<typename Invocable, typename ...CurryArgs>
     ExtensionClosure(Invocable&&, CurryArgs&&...) -> ExtensionClosure<Invocable&&, CurryArgs&&...>;
 
+    template<typename Invocable, typename ...CurryArgs>
+    struct LambdaOperand<ExtensionClosure<Invocable, CurryArgs...>> : LambdaOperand<std::remove_cvref_t<Invocable>> {};
 
 
     struct AccumulateSourceFunctor : ExtensionMethod
@@ -363,18 +378,6 @@ namespace myakish::functional
     inline constexpr AccumulateSourceFunctor AccumulateSource;
 
 
-
-    template<typename Type>
-    struct LambdaOperand : std::true_type {};
-
-    template<typename Type>
-    concept LambdaOperandConcept = LambdaOperand<std::remove_cvref_t<Type>>::value;
-
-
-    struct DisableLambdaOperatorsTag {};
-
-    template<std::derived_from<DisableLambdaOperatorsTag> Type>
-    struct LambdaOperand<Type> : std::false_type {};
 
 
     template<typename Expression>
