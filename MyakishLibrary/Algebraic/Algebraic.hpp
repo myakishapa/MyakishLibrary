@@ -170,8 +170,6 @@ namespace myakish::algebraic
     concept SumConcept = AlgebraicConcept<Type> && requires(Type && type)
     {
         { Index(std::forward<Type>(type)) } -> std::integral;
-
-        // algebraic.Emplace<Index>(args...)
     };
 
     template<SumConcept Type>
@@ -252,7 +250,7 @@ namespace myakish::algebraic
     struct DirectVariadicOverloads
     {
         template<typename Self, AlgebraicConcept Type, typename First, typename ...Functions> requires(!ProductConcept<First>)
-        decltype(auto) operator()(this Self&& self, Type&& algebraic, First&& firstFunction, Functions&&... functions) requires requires { std::forward<Self>(self)(std::forward<Type>(algebraic), detail::ReferenceTuple(std::forward<Functions>(functions)...)); }
+        decltype(auto) operator()(this Self&& self, Type&& algebraic, First&& firstFunction, Functions&&... functions) requires requires { std::forward<Self>(self)(std::forward<Type>(algebraic), detail::ReferenceTuple(std::forward<First>(firstFunction), std::forward<Functions>(functions)...)); }
         {
             return std::forward<Self>(self)(std::forward<Type>(algebraic), detail::ReferenceTuple(std::forward<First>(firstFunction), std::forward<Functions>(functions)...));
         }
@@ -1226,39 +1224,37 @@ namespace myakish::algebraic
     inline constexpr SortFunctor Sort;
     */
 
-    namespace detail
+    struct IntoSourceFunctor : functional::ExtensionMethod
     {
-        struct UnpackLambdaTransformType
+        template<typename Arg>
+        constexpr auto operator()(Arg&& arg) const
         {
-            template<typename Arg>
-            constexpr auto operator()(Arg&& arg) const
+            return[&]<std::invocable<Arg&&> Continuation> (Continuation && continuation) -> decltype(auto)
             {
-                return[&]<std::invocable<Arg&&> Continuation> (Continuation && continuation) -> decltype(auto)
-                {
-                    return std::invoke(std::forward<Continuation>(continuation), std::forward<Arg>(arg));
-                };
-            }
+                return std::invoke(std::forward<Continuation>(continuation), std::forward<Arg>(arg));
+            };
+        }
 
-            template<SumConcept Arg>
-            constexpr auto operator()(Arg&& arg) const
+        template<SumConcept Arg>
+        constexpr auto operator()(Arg&& arg) const
+        {
+            return[&]<typename Continuation> (Continuation && continuation) -> decltype(auto) requires requires { algebraic::Visit(std::forward<Arg>(arg), std::forward<Continuation>(continuation)); }
             {
-                return[&]<typename Continuation> (Continuation && continuation) -> decltype(auto) requires requires { algebraic::Visit(std::forward<Arg>(arg), std::forward<Continuation>(continuation)); }
-                {
-                    return algebraic::Visit(std::forward<Arg>(arg), std::forward<Continuation>(continuation));
-                };
-            }
+                return algebraic::Visit(std::forward<Arg>(arg), std::forward<Continuation>(continuation));
+            };
+        }
 
-            template<ProductConcept Arg>
-            constexpr auto operator()(Arg&& arg) const
+        template<ProductConcept Arg>
+        constexpr auto operator()(Arg&& arg) const
+        {
+            return[&]<typename Continuation> (Continuation && continuation) -> decltype(auto) requires requires { algebraic::Apply(std::forward<Arg>(arg), std::forward<Continuation>(continuation)); }
             {
-                return[&]<typename Continuation> (Continuation && continuation) -> decltype(auto) requires requires { algebraic::Apply(std::forward<Arg>(arg), std::forward<Continuation>(continuation)); }
-                {
-                    return algebraic::Apply(std::forward<Arg>(arg), std::forward<Continuation>(continuation));
-                };
-            }
-        };
-        inline constexpr UnpackLambdaTransformType UnpackLambdaTransform;
-    }
+                return algebraic::Apply(std::forward<Arg>(arg), std::forward<Continuation>(continuation));
+            };
+        }
+    };
+    inline constexpr IntoSourceFunctor IntoSource;
+
 
     
     struct UnpackLambdaFunctor : functional::ExtensionMethod, functional::DisableLambdaOperatorsTag
@@ -1266,7 +1262,7 @@ namespace myakish::algebraic
         template<functional::LambdaExpressionConcept Expression>
         constexpr auto operator()(Expression&& expression) const
         {
-            return functional::BindLambda(std::forward<Expression>(expression), detail::UnpackLambdaTransform);
+            return functional::BindLambda(std::forward<Expression>(expression), IntoSource);
         }
     };
     inline constexpr UnpackLambdaFunctor UnpackLambda;

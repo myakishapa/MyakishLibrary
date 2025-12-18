@@ -902,7 +902,7 @@ namespace myakish::functional
         template<typename Self, typename ArgsTuple>
         constexpr decltype(auto) IntoSource(this Self&& self, const ArgsTuple& argsTuple) requires std::invocable<typename meta::CopyQualifiers<Self, Transform>::type, LambdaSource<typename meta::CopyQualifiers<Self, Expression>::type, ArgsTuple>>
         {
-            return std::invoke(std::forward<Transform>(self.transform), std::forward<Self>(self).expression.IntoSource(argsTuple));
+            return std::invoke(std::forward<Self>(self).transform, std::forward<Self>(self).expression.IntoSource(argsTuple));
         }
     };
     template<LambdaExpressionConcept Expression, typename Transform>
