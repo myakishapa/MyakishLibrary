@@ -6,6 +6,120 @@
 
 namespace myakish::functional
 {
+    template<typename Reference>
+    struct ReferenceWrapper
+    {
+        using Pointer = std::add_pointer_t<typename meta::CopyConst<std::remove_reference_t<Reference>, std::remove_cvref_t<Reference>>::type>;
+
+        Pointer ptr;
+
+        constexpr ReferenceWrapper(Reference&& ref) : ptr(&ref) {}
+
+        constexpr Reference&& Unwrap() const
+        {
+            return std::forward<Reference>(*ptr);
+        }
+    };
+    template<typename Reference>
+    ReferenceWrapper(Reference&&) -> ReferenceWrapper<Reference&&>;
+
+    namespace detail
+    {
+        enum class Strategy
+        {
+            None,
+            Member,
+            ADL
+        };
+                  
+        namespace UnwrapStrategy
+        {
+            template<typename Type>
+            concept HasMember = requires(Type&& wrapper)
+            {
+                { std::forward<Type>(wrapper).Unwrap() };
+            };
+
+            template<typename Type>
+            concept HasADL = requires(Type && wrapper)
+            {
+                { UnwrapADL<Type>(std::forward<Type>(wrapper)) };
+            };
+
+            template<typename Type>
+            consteval Strategy ChooseStrategy()
+            {
+                using enum Strategy;
+
+                if constexpr (HasMember<Type>) return Strategy::Member;
+                else if constexpr (HasADL<Type>) return Strategy::ADL;
+                else return None;
+            }
+        }
+        struct UnwrapFunctor
+        {
+            template<typename Type> requires(UnwrapStrategy::ChooseStrategy<Type>() != Strategy::None)
+            constexpr decltype(auto) operator()(Type&& wrapper) const
+            {
+                constexpr auto Strategy = UnwrapStrategy::ChooseStrategy<Type>();
+
+                using enum Strategy;
+
+                if constexpr (Strategy == Strategy::Member) return std::forward<Type>(wrapper).Unwrap();
+                else if constexpr (Strategy == Strategy::ADL) return UnwrapADL<Type>(std::forward<Type>(wrapper));
+                else static_assert(false);
+            }
+        };
+        inline constexpr UnwrapFunctor Unwrap;
+
+        struct UnwrapOrFunctor
+        {
+            template<typename Type> 
+            constexpr decltype(auto) operator()(Type&& wrapperOrRaw) const
+            {
+                if constexpr (std::invocable<UnwrapFunctor, Type&&>) return Unwrap(std::forward<Type>(wrapperOrRaw));
+                else return std::forward<Type>(wrapperOrRaw);
+            }
+        };
+        inline constexpr UnwrapOrFunctor UnwrapOr;
+
+
+        struct WrapFunctor
+        {
+            template<typename Type> 
+            constexpr auto operator()(Type&& wrapperOrRaw) const
+            {
+                if constexpr (std::invocable<UnwrapFunctor, Type&&>) return std::forward<Type>(wrapperOrRaw);
+                else if constexpr (std::is_lvalue_reference_v<Type&&>) return ReferenceWrapper(std::forward<Type>(wrapperOrRaw));
+                else return std::forward<Type>(wrapperOrRaw);
+            }
+        };
+        inline constexpr WrapFunctor Wrap;
+    }
+
+    template<typename ForceDependentName, typename Ref>
+    constexpr decltype(auto) UnwrapADL(std::reference_wrapper<Ref> wrapper)
+    {
+        return wrapper.get();
+    }
+
+
+    template<typename Type>
+    using WrappedT = std::invoke_result_t<detail::WrapFunctor, Type&&>;
+
+    template<typename Type>
+    struct Wrapped : meta::ReturnType<WrappedT<Type>> {};
+
+
+    template<typename Type>
+    using UnwrappedT = std::invoke_result_t<detail::UnwrapOrFunctor, Type&&>;
+
+    template<typename Type>
+    struct Unwrapped : meta::ReturnType<UnwrappedT<Type>> {};
+
+    template<typename Wrapper, typename Like>
+    using UnwrappedLikeT = UnwrappedT<meta::LikeT<Like&&, Wrapper>>;
+
 
     template<typename Type>
     struct LambdaExpression : std::false_type {};
@@ -126,52 +240,30 @@ namespace myakish::functional
         inline constexpr RangePlaceholder $r;
     }
 
+
+
     template<typename Value>
-    struct ValueConstantExpression : LambdaViaResolve
+    struct ConstantExpression : LambdaViaResolve
     {
         Value value;
 
-        constexpr ValueConstantExpression(Value value) : value(std::move(value)) {}
+        constexpr ConstantExpression(Value value) : value(std::move(value)) {}
 
-        template<std::invocable<const Value&> Invocable, typename ArgsTuple>
-        constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple&) const&
+        template<typename Self, std::invocable<UnwrappedLikeT<Value, Self>> Invocable, typename ArgsTuple>
+        constexpr decltype(auto) LambdaResolve(this Self&& self, Invocable&& invocable, const ArgsTuple&)
         {
-            return std::invoke(std::forward<Invocable>(invocable), value);
-        }
-
-        template<std::invocable<Value&&> Invocable, typename ArgsTuple>
-        constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple&)&&
-        {
-            return std::invoke(std::forward<Invocable>(invocable), std::move(value));
+            return std::invoke(std::forward<Invocable>(invocable), detail::UnwrapOr(std::forward<Self>(self).value));
         }
     };
     template<typename Value>
-    ValueConstantExpression(Value) -> ValueConstantExpression<Value>;
-
-    template<typename Reference>
-    struct ReferenceConstantExpression : LambdaViaResolve
-    {
-        Reference&& ref;
-
-        constexpr ReferenceConstantExpression(Reference&& ref) : ref(std::forward<Reference>(ref)) {}
-
-        template<std::invocable<Reference&&> Invocable, typename ArgsTuple>
-        constexpr decltype(auto) LambdaResolve(Invocable&& invocable, const ArgsTuple&) const
-        {
-            return std::invoke(std::forward<Invocable>(invocable), std::forward<Reference>(ref));
-        }
-    };
-    template<typename Reference>
-    ReferenceConstantExpression(Reference&&) -> ReferenceConstantExpression<Reference&&>;
-
+    ConstantExpression(Value&&) -> ConstantExpression<WrappedT<Value&&>>;
 
     namespace detail
     {
         template<typename NonLambda>
         constexpr auto MakeExpression(NonLambda&& value)
         {
-            if constexpr (std::is_lvalue_reference_v<NonLambda>) return ReferenceConstantExpression(std::forward<NonLambda>(value));
-            else return ValueConstantExpression(std::forward<NonLambda>(value));
+            return ConstantExpression(std::forward<NonLambda>(value));
         }
 
         template<LambdaExpressionConcept Lambda>
@@ -279,13 +371,13 @@ namespace myakish::functional
         };
     }
 
-    template<typename Invocable, LambdaExpressionConcept ...ArgResolvers>
+    template<typename Invocable, typename ...ArgResolvers>
     struct LambdaClosure : LambdaViaResolve
     {
-        Invocable&& baseInvocable;
+        Invocable baseInvocable;
         std::tuple<ArgResolvers...> resolvers;
 
-        constexpr LambdaClosure(Invocable&& baseInvocable, ArgResolvers... resolvers) : baseInvocable(std::forward<Invocable>(baseInvocable)), resolvers(std::move(resolvers)...) {}
+        constexpr LambdaClosure(Invocable baseInvocable, ArgResolvers... resolvers) : baseInvocable(std::move(baseInvocable)), resolvers(std::move(resolvers)...) {}
 
         template<typename Self, typename TargetInvocable, typename ArgsTuple> requires std::invocable<TargetInvocable, detail::ForwardingApplyResult<Self, ArgsTuple>>
         constexpr decltype(auto) LambdaResolve(this Self&& self, TargetInvocable&& targetInvocable, const ArgsTuple& argsTuple)
@@ -293,20 +385,19 @@ namespace myakish::functional
             return std::invoke(std::forward<TargetInvocable>(targetInvocable), detail::ForwardingApply(std::forward<Self>(self), argsTuple));
         }
 
-        template<typename Self, typename ...Args> requires detail::LambdaInvocable<Invocable, std::tuple<Args&&...>, typename meta::CopyQualifiers<Self, ArgResolvers>::type...>
+        template<typename Self, typename ...Args> requires detail::LambdaInvocable<UnwrappedLikeT<Invocable, Self>, std::tuple<Args&&...>, UnwrappedLikeT<ArgResolvers, Self>...>
         constexpr decltype(auto) operator()(this Self&& self, Args&&... args)
         {
             auto InvokeTarget = [&]<typename ...Resolvers>(Resolvers&&... resolvedResolvers) -> decltype(auto)
             {
-                return detail::LambdaInvoke(std::forward<Invocable>(self.baseInvocable), std::forward_as_tuple(std::forward<Args>(args)...), std::forward<Resolvers>(resolvedResolvers)...);
+                return detail::LambdaInvoke(detail::UnwrapOr(std::forward<Self>(self).baseInvocable), std::forward_as_tuple(std::forward<Args>(args)...), detail::UnwrapOr(std::forward<Resolvers>(resolvedResolvers))...);
             };
 
             return std::apply(InvokeTarget, std::forward<Self>(self).resolvers);
         }
     };
-
     template<typename Invocable, typename ...ArgResolvers>
-    LambdaClosure(Invocable&&, ArgResolvers...) -> LambdaClosure<Invocable&&, ArgResolvers...>;
+    LambdaClosure(Invocable&&, ArgResolvers&&...) -> LambdaClosure<WrappedT<Invocable&&>, WrappedT<ArgResolvers&&>...>;
 
 
     template<typename Type>
@@ -387,14 +478,14 @@ namespace myakish::functional
 
         constexpr CompleteLambda(Expression expression) : expression(std::move(expression)) {}
 
-        template<typename ...Args>
-        constexpr decltype(auto) operator()(Args&&... args) const
+        template<typename Self, typename ...Args> requires std::invocable<UnwrappedLikeT<Expression, Self>, Args&&...>
+        constexpr decltype(auto) operator()(this Self&& self, Args&&... args)
         {
-            return expression(std::forward<Args>(args)...);
+            return std::invoke(detail::UnwrapOr(std::forward<Self>(self).expression), std::forward<Args>(args)...);
         }
     };
     template<typename Expression>
-    CompleteLambda(Expression) -> CompleteLambda<Expression>;
+    CompleteLambda(Expression&&) -> CompleteLambda<WrappedT<Expression&&>>;
 
     struct CompleteFunctor : ExtensionMethod, DisableLambdaOperatorsTag
     {
@@ -647,21 +738,36 @@ namespace myakish::functional
         {
             return std::invoke(std::forward<Invocable>(invocable), std::forward<First>(first), RightFold(std::forward<Invocable>(invocable), std::forward<Rest>(rest)...));
         }
+
+        template<typename Value>
+        struct ConstantFunction : ExtensionMethod
+        {
+            Value value;
+
+            constexpr ConstantFunction(Value value) : value(std::move(value)) {}
+
+            template<typename Self>
+            constexpr decltype(auto) operator()(this Self&& self, auto&&...)
+            {
+                return detail::UnwrapOr(std::forward<Self>(self).expression);
+            }
+        };
+        template<typename Value>
+        ConstantFunction(Value&&) -> ConstantFunction<WrappedT<Value&&>>;
+
     }
 
     inline namespace utility
     {
-        struct ConstantFunctor : ExtensionMethod
-        {
-            constexpr auto operator()(auto value) const
-            {
-                return Complete = [=](auto&&...)
-                    {
-                        return value;
-                    };
-            }
-        };
-        inline constexpr ConstantFunctor Constant;
+        struct UnwrapFunctor : detail::UnwrapFunctor, ExtensionMethod {};
+        inline constexpr UnwrapFunctor Unwrap;
+
+        struct UnwrapOrFunctor : detail::UnwrapOrFunctor, ExtensionMethod {};
+        inline constexpr UnwrapOrFunctor UnwrapOr;
+
+        struct WrapFunctor : detail::WrapFunctor, ExtensionMethod {};
+        inline constexpr WrapFunctor Wrap;
+
 
         struct RightFoldFunctor : ExtensionMethod
         {
@@ -683,23 +789,14 @@ namespace myakish::functional
             constexpr Composite(Inner inner, Outer outer) : inner(std::move(inner)), outer(std::move(outer)) {}
 
             template<typename Self, typename ...Args>
-            constexpr decltype(auto) operator()(this Self&& self, Args&&... args) requires requires { std::invoke(std::forward<Self>(self).outer, std::invoke(std::forward<Self>(self).inner, std::forward<Args>(args)...)); }
+            constexpr decltype(auto) operator()(this Self&& self, Args&&... args) 
+                requires std::invocable<UnwrappedT<meta::LikeT<Self&&, Outer>>, std::invoke_result_t<UnwrappedT<meta::LikeT<Self&&, Inner>>, Args&&...>>
             {
-                return std::invoke(std::forward<Self>(self).outer, std::invoke(std::forward<Self>(self).inner, std::forward<Args>(args)...));
+                return std::invoke(detail::UnwrapOr(std::forward<Self>(self).outer), std::invoke(detail::UnwrapOr(std::forward<Self>(self).inner), std::forward<Args>(args)...));
             }
         };
         template<typename Inner, typename Outer>
-        Composite(Inner, Outer) -> Composite<Inner, Outer>;
-
-        struct ComposeFunctor : ExtensionMethod
-        {
-            template<typename Inner, typename Outer>
-            constexpr auto operator()(Inner inner, Outer outer) const
-            {
-                return Composite(std::move(inner), std::move(outer));
-            }
-        };
-        inline constexpr ComposeFunctor Compose;
+        Composite(Inner&&, Outer&&) -> Composite<WrappedT<Inner>, WrappedT<Outer>>;
 
 
         struct MakeCopyFunctor : ExtensionMethod
@@ -748,8 +845,10 @@ namespace myakish::functional
         template<template<typename...> typename Template>
         inline constexpr DeduceConstructFunctor<Template> DeduceConstruct;
         
-        inline constexpr auto ByValue = DeduceConstruct<ValueConstantExpression>;
-        inline constexpr auto ByRef = DeduceConstruct<ReferenceConstantExpression>;
+        inline constexpr auto ByValue = MakeCopy;
+        inline constexpr auto ByRef = DeduceConstruct<ReferenceWrapper>;
+        inline constexpr auto Constant = DeduceConstruct<detail::ConstantFunction>;
+        inline constexpr auto Compose = DeduceConstruct<Composite>;
 
 
         template<typename Type>
@@ -833,9 +932,9 @@ namespace myakish::functional
     }
     
     template<typename Inner, typename Outer> requires(PipelinableTo<Inner> || PipelinableTo<Outer>)
-    constexpr decltype(auto) operator>>(Inner inner, Outer outer)
+    constexpr decltype(auto) operator>>(Inner&& inner, Outer&& outer)
     {
-        return Compose(std::move(inner), std::move(outer));
+        return Compose(std::forward<Inner>(inner), std::forward<Outer>(outer));
     }
 
 
@@ -891,7 +990,7 @@ namespace myakish::functional
     inline constexpr auto Overload = DeduceConstruct<Overloads>;
     
 
-    template<LambdaExpressionConcept Expression, typename Transform>
+    template<typename Expression, typename Transform>
     struct LambdaSourceTransform : LambdaExpressionTag
     {
         Expression expression;
@@ -900,13 +999,14 @@ namespace myakish::functional
         constexpr LambdaSourceTransform(Expression expression, Transform transform) : expression(std::move(expression)), transform(std::move(transform)) {}
 
         template<typename Self, typename ArgsTuple>
-        constexpr decltype(auto) IntoSource(this Self&& self, const ArgsTuple& argsTuple) requires std::invocable<typename meta::CopyQualifiers<Self, Transform>::type, LambdaSource<typename meta::CopyQualifiers<Self, Expression>::type, ArgsTuple>>
+        constexpr decltype(auto) IntoSource(this Self&& self, const ArgsTuple& argsTuple) 
+            requires std::invocable<UnwrappedT<meta::LikeT<Self, Transform>>, LambdaSource<UnwrappedT<meta::LikeT<Self, Expression>>, ArgsTuple>>
         {
-            return std::invoke(std::forward<Self>(self).transform, std::forward<Self>(self).expression.IntoSource(argsTuple));
+            return std::invoke(detail::UnwrapOr(std::forward<Self>(self).transform), detail::UnwrapOr(std::forward<Self>(self).expression).IntoSource(argsTuple));
         }
     };
-    template<LambdaExpressionConcept Expression, typename Transform>
-    LambdaSourceTransform(Expression, Transform) -> LambdaSourceTransform<Expression, Transform>;
+    template<typename Expression, typename Transform>
+    LambdaSourceTransform(Expression&&, Transform&&) -> LambdaSourceTransform<WrappedT<Expression&&>, WrappedT<Transform&&>>;
 
     inline constexpr auto TransformLambdaSource = DeduceConstruct<LambdaSourceTransform>;
     
@@ -939,14 +1039,14 @@ namespace myakish::functional
 
         constexpr JoinedSource(Source source) : source(std::move(source)) {}
 
-        template<typename Self, typename Continuation> requires std::invocable<typename meta::CopyQualifiers<Self, Source>::type, detail::JoinSourceInvokeTarget<Continuation&&>>
+        template<typename Self, typename Continuation> requires std::invocable<UnwrappedT<meta::LikeT<Self, Source>>, detail::JoinSourceInvokeTarget<Continuation&&>>
         constexpr decltype(auto) operator()(this Self&& self, Continuation&& continuation)
         {
-            return std::invoke(std::forward<Self>(self).source, detail::JoinSourceInvokeTarget(std::forward<Continuation>(continuation)));
+            return std::invoke(detail::UnwrapOr(std::forward<Self>(self).source), detail::JoinSourceInvokeTarget(std::forward<Continuation>(continuation)));
         }
     };
     template<typename Source>
-    JoinedSource(Source) -> JoinedSource<Source>;
+    JoinedSource(Source&&) -> JoinedSource<WrappedT<Source&&>>;
 
     inline constexpr auto JoinSource = DeduceConstruct<JoinedSource>;
 
@@ -979,14 +1079,14 @@ namespace myakish::functional
 
         constexpr MappedSource(Source source, Transform transform) : source(std::move(source)), transform(std::move(transform)) {}
 
-        template<typename Self, typename Continuation> requires std::invocable<typename meta::CopyQualifiers<Self, Source>::type, detail::MapSourceInvokeTarget<Continuation&&, typename meta::CopyQualifiers<Self, Transform>::type>>
+        template<typename Self, typename Continuation> requires std::invocable< UnwrappedT<meta::LikeT<Self, Source>>, detail::MapSourceInvokeTarget< Continuation&&, UnwrappedT<meta::LikeT<Self, Transform>> > >
         constexpr decltype(auto) operator()(this Self&& self, Continuation&& continuation)
         {
-            return std::invoke(std::forward<Self>(self).source, detail::MapSourceInvokeTarget(std::forward<Continuation>(continuation), std::forward<Self>(self).transform));
+            return std::invoke(detail::UnwrapOr(std::forward<Self>(self).source), detail::MapSourceInvokeTarget(std::forward<Continuation>(continuation), detail::UnwrapOr(std::forward<Self>(self).transform)));
         }
     };
     template<typename Source, typename Transform>
-    MappedSource(Source, Transform) -> MappedSource<Source, Transform>;
+    MappedSource(Source&&, Transform&&) -> MappedSource<WrappedT<Source&&>, WrappedT<Transform&&>>;
 
     inline constexpr auto MapSource = DeduceConstruct<MappedSource>;
 
@@ -1000,20 +1100,46 @@ namespace myakish::functional
     };
     inline constexpr BindSourceFunctor BindSource;
 
+    namespace detail
+    {
+        template<typename SourceFunctor, typename... Args>
+        struct LambdaFunctorTransform
+        {
+            SourceFunctor functor;
+            std::tuple<Args...> args;
 
-    template<auto SourceFunctor>
+            constexpr LambdaFunctorTransform(SourceFunctor functor, Args... args) : functor(std::move(functor)), args(std::move(args)...) {}
+
+            template<typename Self, typename Source> requires std::invocable<UnwrappedLikeT<SourceFunctor, Self>, Source&&, UnwrappedLikeT<Args, Self>...>
+            constexpr decltype(auto) operator()(this Self&& self, Source&& source) 
+            {
+                auto InvokeTarget = [&]<typename ...ResolvedArgs>(ResolvedArgs&&... resolvedArgs) -> decltype(auto)
+                    {
+                        return std::invoke(detail::UnwrapOr(std::forward<Self>(self).functor), std::forward<Source>(source), detail::UnwrapOr(std::forward<ResolvedArgs>(resolvedArgs))...);
+                    };
+
+                return std::apply(InvokeTarget, std::forward<Self>(self).args);
+            }
+        };
+    }
+
+    template<typename SourceFunctor>
     struct LambdaFunctor : ExtensionMethod, DisableLambdaOperatorsTag
     {
-        template<LambdaExpressionConcept Lambda, typename... Args>
-        constexpr auto operator()(Lambda&& lambda, Args&&... args) const
+        SourceFunctor functor;
+
+        constexpr LambdaFunctor(SourceFunctor functor) : functor(std::move(functor)) {}
+
+        template<typename Self, typename Lambda, typename... Args>
+        constexpr auto operator()(this Self&& self, Lambda&& lambda, Args&&... args)
         {
-            return TransformLambdaSource(std::forward<Lambda>(lambda), [&]<typename Source>(Source && source) -> decltype(auto)
-            {
-                return SourceFunctor(std::forward<Source>(source), std::forward<Args>(args)...);
-            });
+            return TransformLambdaSource(std::forward<Lambda>(lambda), detail::LambdaFunctorTransform(std::forward<Self>(self).functor, std::forward<Args>(args)...));
         }
     };
-    inline constexpr LambdaFunctor<JoinSource> JoinLambda;
-    inline constexpr LambdaFunctor<MapSource> MapLambda;
-    inline constexpr LambdaFunctor<BindSource> BindLambda;
+    template<typename SourceFunctor>
+    LambdaFunctor(SourceFunctor&&) -> LambdaFunctor<WrappedT<SourceFunctor&&>>;
+
+    inline constexpr auto JoinLambda = LambdaFunctor(JoinSource);
+    inline constexpr auto MapLambda = LambdaFunctor(MapSource);
+    inline constexpr auto BindLambda = LambdaFunctor(BindSource);
 }

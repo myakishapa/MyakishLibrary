@@ -505,6 +505,9 @@ namespace myakish::meta
         using type = QuotedCompose<Const, LRef, RRef>::template Function<To>::type;
     };
 
+    template<typename From, typename To>
+    using LikeT = CopyQualifiers<From, To>::type;
+
 
     template<typename First, typename Second>
     struct SameBase : std::is_same<std::remove_cvref_t<First>, std::remove_cvref_t<Second>> {};

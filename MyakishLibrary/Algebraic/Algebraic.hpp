@@ -1259,7 +1259,7 @@ namespace myakish::algebraic
     
     struct UnpackLambdaFunctor : functional::ExtensionMethod, functional::DisableLambdaOperatorsTag
     {
-        template<functional::LambdaExpressionConcept Expression>
+        template<typename Expression>
         constexpr auto operator()(Expression&& expression) const
         {
             return functional::BindLambda(std::forward<Expression>(expression), IntoSource);

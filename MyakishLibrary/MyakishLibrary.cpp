@@ -276,7 +276,7 @@ int main()
 
             constexpr auto rule = bss::RepeatParser(bss::Int);
 
-            rule(out | st2::WriteOnly, srcVec);
+            //rule(out | st2::WriteOnly, srcVec);
 
             std::vector<int> dstVec;
 
@@ -415,7 +415,7 @@ int main()
 
             std::println("{} {}", tuple2.Get<0>(), tuple2.Get<1>());
         }
-
+        
         // Flatten Tuple
         {
             float f = 10.f;
@@ -517,7 +517,7 @@ int main()
 
             auto comp = func1 >> hof::Identity >> func2;
 
-            auto val = comp(2);
+            //auto val = comp(2);
 
             std::println();
         }
@@ -529,6 +529,30 @@ int main()
         }
 
         // lambdas
+        {
+            int i = 2;
+
+            auto fgh = hof::ConstantExpression(3);
+            
+            
+
+            auto l = hof::Identity[hof::Identity[$0]];
+            auto l2 = hof::Identity[$0];
+            auto l3 = hof::LambdaClosure(hof::Identity, hof::detail::MakeExpression($0));
+
+            auto lkdhf = l(1);
+
+            using dfgl = hof::UnwrappedLikeT<const hof::IdentityFunctor&, int&&>;
+
+            using dsgf = hof::UnwrappedT<meta::LikeT<int&&, hof::WrappedT<const hof::IdentityFunctor&>>>;
+            using dsgf2 = meta::LikeT<int&&, hof::WrappedT<const hof::IdentityFunctor&>>;
+
+            meta::TypeList<dsgf2> asd;
+
+            using dsgf = hof::UnwrappedT<dsgf2>;
+
+            std::println();
+        }
         {
             auto l = hof::RightFold[hof::Plus, $0a];
 
