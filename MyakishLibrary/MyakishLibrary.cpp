@@ -26,7 +26,6 @@
 #include <MyakishLibrary/BinarySerializationSuite/BinarySerializationSuite.hpp>
 
 #include <MyakishLibrary/Algebraic/Algebraic.hpp>
-#include <MyakishLibrary/Algebraic/Standard.hpp>
 
 
 namespace st2 = myakish::streams;
@@ -276,7 +275,7 @@ int main()
 
             constexpr auto rule = bss::RepeatParser(bss::Int);
 
-            //rule(out | st2::WriteOnly, srcVec);
+            rule(out | st2::WriteOnly, srcVec);
 
             std::vector<int> dstVec;
 
@@ -317,7 +316,7 @@ int main()
 
         //unique
         {
-            using list = meta::TypeList<std::string, float, long, float, int, int, int, int, std::string>;
+            using list = meta::TypeList<std::string, float&, long, float&, int&&, const int&, std::string>;
 
             using unique = meta::Unique<list>::type;
 
@@ -346,29 +345,22 @@ int main()
     {
         // basics
         {
-            using namespace myakish::algebraic;
-
-
             std::variant<int, float, long> var = 2l;
 
-            auto intToStr = [](int i) { return "kdfhgko"s; };
+            auto intToStr = [](int i) { return 'a'; };
             auto floatToInt = [](float f) { return 3; };
-            auto transformLong = [](long& l) { l = 4; return l; };
+            auto transformLong = [](long l) { l = 4; return l; };
 
             auto zipWith3 = [](auto arg) { return std::tuple(arg, 3); };
 
-            auto result = var | Map[intToStr, floatToInt, transformLong] | Map[zipWith3];
+            auto result = var | alg::Map[intToStr, floatToInt, transformLong] | alg::Map[zipWith3];
 
-            auto tuple = std::tuple(1, 2.f, "sfd"s);
-
-            auto result2 = std::move(tuple) | Select[2];
-
-            auto synth = Synthesize<alg::Variant<int, double, std::string>>(2);
+            auto h = result | alg::Get<2>;
 
             std::println();
         }
 
-        auto test = [](auto arg)
+       auto test = [](auto arg)
             {
                 if (std::integral<decltype(arg)>) std::println("int {}", arg);
                 else std::println("not int {}", arg);
@@ -381,41 +373,21 @@ int main()
 
             alg::Variant<float&, int> sum(f);
 
-
-
             alg::Visit(sum, test);
 
             f = 20.f;
 
-            sum.Emplace<1>(1);
+            sum = 1;
 
             sum | alg::Visit[test];
 
-            sum.Emplace<0>(f2);
+            sum = f2;
 
-            auto val = sum.Get<0>();
+            auto val = sum | alg::Get<0>;
 
             std::println("{}", val);
         }
-
-        // Select
-        {
-            float f = 10.f;
-
-            alg::Tuple<int, float&> tuple(1, f);
-            alg::Tuple<int, float&> tuple3(tuple);
-
-            f = 20.f;
-
-            alg::Tuple<float, const float&> tuple2(tuple);
-
-            auto first = tuple | alg::Select[1];
-
-            first | alg::Visit[test];
-
-            std::println("{} {}", tuple2.Get<0>(), tuple2.Get<1>());
-        }
-        
+      
         // Flatten Tuple
         {
             float f = 10.f;
@@ -426,13 +398,13 @@ int main()
             alg::Tuple<alg::Tuple<int, float&>, std::string, alg::Tuple<int, float&>> tupleOfTuples(tuple, "psink", tuple2);
 
 
-            auto flat = tupleOfTuples | alg::Flatten;
+            auto flat = tupleOfTuples | alg::Join;
 
-            auto t1 = flat.Get<0>();
-            auto t2 = flat.Get<1>();
-            auto t3 = flat.Get<2>();
-            auto t4 = flat.Get<3>();
-            auto t5 = flat.Get<4>();
+            auto t1 = flat | alg::Get<0>;
+            auto t2 = flat | alg::Get<1>;
+            auto t3 = flat | alg::Get<2>;
+            auto t4 = flat | alg::Get<3>;
+            auto t5 = flat | alg::Get<4>;
 
             std::println("");
         }
@@ -444,7 +416,7 @@ int main()
             alg::Variant<int&, alg::Variant<float&, std::string>> var(f);
 
 
-            auto flat = var | alg::Flatten;
+            auto flat = var | alg::Join;
 
             auto& t = flat | alg::GetByType<float&>;
 
@@ -458,39 +430,11 @@ int main()
             alg::Variant<int&, alg::Variant<float&, std::string, int&>> var(f);
 
 
-            auto flat = var | alg::Flatten | alg::Unique<> | alg::Values;
+            auto flat = var | alg::Join | alg::Unique | alg::Values;
 
             auto t = flat | alg::GetByType<float>;
 
             std::println("");
-        }
-
-        // Map
-        {
-            alg::Variant<int, float, long> var(2l);
-            //std::variant<int, float, long> var(2l);
-
-            auto intToStr = [](int i) { return "kdfhgko"s; };
-            auto floatToInt = [](float f) { return 3; };
-            auto transformLong = [](long& l) { l = 4; return l; };
-
-            auto zipWith3 = [](auto arg) { return std::tuple(arg, 3); };
-
-            //auto result = var | alg::Map[intToStr, floatToInt, transformLong] | alg::Map[zipWith3];
-            auto result = alg::Map(var, alg::ForwardAsTuple(intToStr, floatToInt, transformLong));
-
-            //result | alg::Visit[test];
-            //alg::Visit(result, test);
-
-            auto val = result | alg::Get<2>;
-        }
-
-        // Accessors
-        {
-            using accessors = meta::TypeList<alg::accessors::Value<int>, alg::accessors::Reference<const float&>>;
-            using args = meta::TypeList<float&>;
-
-            constexpr auto a = alg::DeduceConvertion<accessors, args>::value;
         }
 
         // Is
@@ -502,6 +446,32 @@ int main()
             auto t3 = var | alg::Is<long, std::is_same>;
             auto t4 = var | alg::Is<long&, std::is_same>;
             auto t5 = var | alg::Is<int, std::is_same>;
+
+            std::println();
+        }
+
+        // First*
+        {
+            std::variant<int, std::string> var = 2l;
+
+            auto intToStr = [](int i) { return 'a'; };
+
+            auto result = var | alg::FirstMap[intToStr, hof::Identity];
+
+            auto eval = result | alg::Evaluate;
+
+            std::println();
+        }
+
+        //Maybe
+        {
+            std::optional<int> var = 1337;
+            std::optional<int> var2{};
+
+            auto intToStr = [](int i) { return std::format("{}", i); };
+
+            auto r1 = var  | alg::FirstMap[intToStr, hof::Identity] | alg::Maybe<std::string>["Empty"];
+            auto r2 = var2 | alg::FirstMap[intToStr, hof::Identity] | alg::Maybe<std::string>["Empty"];
 
             std::println();
         }

@@ -241,18 +241,33 @@ namespace myakish::functional
     }
 
 
+    template<typename Value>
+    struct ConstantSource
+    {
+        Value value;
+
+        constexpr ConstantSource(Value value) : value(std::move(value)) {}
+
+        template<typename Self, std::invocable<UnwrappedLikeT<Value, Self>> Invocable>
+        constexpr decltype(auto) operator()(this Self&& self, Invocable&& invocable)
+        {
+            return std::invoke(std::forward<Invocable>(invocable), detail::UnwrapOr(std::forward<Self>(self).value));
+        }
+    };
+    template<typename Value>
+    ConstantSource(Value&&) -> ConstantSource<WrappedT<Value&&>>;
 
     template<typename Value>
-    struct ConstantExpression : LambdaViaResolve
+    struct ConstantExpression : LambdaExpressionTag
     {
         Value value;
 
         constexpr ConstantExpression(Value value) : value(std::move(value)) {}
 
-        template<typename Self, std::invocable<UnwrappedLikeT<Value, Self>> Invocable, typename ArgsTuple>
-        constexpr decltype(auto) LambdaResolve(this Self&& self, Invocable&& invocable, const ArgsTuple&)
+        template<typename Self, typename ArgsTuple>
+        constexpr decltype(auto) IntoSource(this Self&& self, const ArgsTuple&)
         {
-            return std::invoke(std::forward<Invocable>(invocable), detail::UnwrapOr(std::forward<Self>(self).value));
+            return ConstantSource(std::forward<Self>(self).value);
         }
     };
     template<typename Value>
@@ -759,6 +774,10 @@ namespace myakish::functional
 
     inline namespace utility
     {
+        struct UninvocableFunctor : ExtensionMethod {};
+        inline constexpr UninvocableFunctor Uninvocable;
+
+
         struct UnwrapFunctor : detail::UnwrapFunctor, ExtensionMethod {};
         inline constexpr UnwrapFunctor Unwrap;
 
@@ -980,7 +999,7 @@ namespace myakish::functional
     }
 
     template<typename ...Functions>
-    struct Overloads : Functions...
+    struct Overloads : ExtensionMethod, Functions...
     {
         using Functions::operator()...;
     };
@@ -989,6 +1008,36 @@ namespace myakish::functional
 
     inline constexpr auto Overload = DeduceConstruct<Overloads>;
     
+
+    template<typename ...Functions>
+    struct FirstProxy : ExtensionMethod
+    {
+        std::tuple<Functions...> functions;
+
+        constexpr FirstProxy(Functions... functions) : functions(std::move(functions)...) {}
+
+        template<typename Self, typename ...Args>
+        struct FunctionIndex
+        {
+            using FunctionTypes = meta::TypeList<UnwrappedLikeT<Functions, Self>...>;
+
+            using Predicate = meta::RightCurry<std::is_invocable, Args&&...>;
+
+            inline constexpr static auto value = meta::QuotedFirst<Predicate, FunctionTypes>::value;
+        };
+
+        template<typename Self, typename ...Args, typename FoundFunctionIndex = FunctionIndex<Self, Args&&...>>
+        constexpr decltype(auto) operator()(this Self&& self, Args&&... args) requires meta::ValueDefinedConcept<FoundFunctionIndex>
+        {
+            return std::invoke(functional::UnwrapOr(std::get<FoundFunctionIndex::value>(std::forward<Self>(self).functions)), std::forward<Args>(args)...);
+        }
+    };
+    template<typename ...Functions>
+    FirstProxy(Functions&&...) -> FirstProxy<WrappedT<Functions&&>...>;
+
+    inline constexpr auto First = DeduceConstruct<FirstProxy>;
+
+
 
     template<typename Expression, typename Transform>
     struct LambdaSourceTransform : LambdaExpressionTag
@@ -1121,6 +1170,8 @@ namespace myakish::functional
                 return std::apply(InvokeTarget, std::forward<Self>(self).args);
             }
         };
+        template<typename SourceFunctor, typename... Args>
+        LambdaFunctorTransform(SourceFunctor&&, Args&&...) -> LambdaFunctorTransform<WrappedT<SourceFunctor&&>, WrappedT<Args&&>...>;
     }
 
     template<typename SourceFunctor>

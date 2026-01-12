@@ -40,6 +40,16 @@ namespace myakish::meta
     template<typename...>
     struct TypeList {};
 
+    using Nil = TypeList<>;
+
+    template<typename Type, typename NonList>
+    struct Cons : Undefined {};
+
+    template<typename Type, typename ...Types>
+    struct Cons<Type, TypeList<Types...>> : ReturnType<TypeList<Type, Types...>> {};
+
+    template<typename Type, typename List>
+    using ConsT = Cons<Type, List>::type;
 
 
     template<typename InstantiatedFunction>
@@ -358,18 +368,21 @@ namespace myakish::meta
     {
     private:
 
-        using begin = std::conditional_t<Func<First>::value, TypeList<First>, TypeList<>>;
+        using RestFilter = Filter<Func, TypeList<Rest...>>;
 
     public:
 
-        using type = Concat<begin, typename Filter<Func, TypeList<Rest...>>::type>::type;
+        using type =      std::conditional_t<Func<First>::value, ConsT<First, typename RestFilter::type>, typename RestFilter::type>;
+        using Discarded = std::conditional_t<Func<First>::value, typename RestFilter::Discarded, ConsT<First, typename RestFilter::Discarded>>;
     };
 
     template<template<typename> typename Func>
     struct Filter<Func, TypeList<>>
     {
         using type = TypeList<>;
+        using Discarded = TypeList<>;
     };
+
 
     template<typename Quoted, typename List>
     struct QuotedFilter : Filter<Quoted::template Function, List> {};
@@ -414,32 +427,42 @@ namespace myakish::meta
     struct QuotedNoneOf : NoneOf<Quoted::template Function, List> {};
 
 
+    template<typename First, typename Second>
+    struct SameBase : std::is_same<std::remove_cvref_t<First>, std::remove_cvref_t<Second>> {};
 
-    template<typename NonList, template<typename, typename> typename Comparator = std::is_same>
+
+    
+    template<typename First, typename Second>
+    struct ExactOrUnqualified : std::conditional<std::same_as<First, Second>, First, std::remove_cvref_t<First>> {};
+
+
+    template<typename NonList, template<typename, typename> typename Comparator = SameBase, template<typename, typename> typename Transformer = ExactOrUnqualified>
     struct Unique : Undefined {};
 
-    template<template<typename, typename> typename Comparator, typename First, typename ...Rest>
-    struct Unique<TypeList<First, Rest...>, Comparator>
+    template<template<typename, typename> typename Comparator, template<typename, typename> typename Transformer, typename First, typename ...Rest>
+    struct Unique<TypeList<First, Rest...>, Comparator, Transformer>
     {
     private:
 
         using Predicate = LeftCurry<Comparator, First>;
 
-        using begin = std::conditional_t<QuotedNoneOf<Predicate, TypeList<Rest...>>::value, TypeList<First>, TypeList<>>;
+        using Split = QuotedFilter<Predicate, TypeList<Rest...>>;
+
+        using TransformedFirst = RightFold<Transformer, ConsT<First, typename Split::type>>::type;
 
     public:
 
-        using type = Concat<begin, typename Unique<TypeList<Rest...>, Comparator>::type>::type;
+        using type = Cons<TransformedFirst, typename Unique<typename Split::Discarded, Comparator, Transformer>::type>::type;
     };
 
-    template<template<typename, typename> typename Comparator>
-    struct Unique<TypeList<>, Comparator>
+    template<template<typename, typename> typename Comparator, template<typename, typename> typename Transformer>
+    struct Unique<TypeList<>, Comparator, Transformer>
     {
         using type = TypeList<>;
     };
 
-    template<typename Quoted, typename List>
-    struct QuotedUnique : Unique<List, Quoted::template Function> {};
+    template<typename List, typename QuotedComparator, typename QuotedTransform>
+    struct QuotedUnique : Unique<List, QuotedComparator::template Function, QuotedTransform::template Function> {};
 
 
 
@@ -508,9 +531,6 @@ namespace myakish::meta
     template<typename From, typename To>
     using LikeT = CopyQualifiers<From, To>::type;
 
-
-    template<typename First, typename Second>
-    struct SameBase : std::is_same<std::remove_cvref_t<First>, std::remove_cvref_t<Second>> {};
 
 
     template<typename Type>

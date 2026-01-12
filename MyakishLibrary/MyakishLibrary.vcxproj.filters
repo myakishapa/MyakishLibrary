@@ -83,13 +83,7 @@
     <ClInclude Include="Meta.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Algebraic\Accessors.hpp">
-      <Filter>Header Files\Algebraic</Filter>
-    </ClInclude>
     <ClInclude Include="Algebraic\Algebraic.hpp">
-      <Filter>Header Files\Algebraic</Filter>
-    </ClInclude>
-    <ClInclude Include="Algebraic\Standard.hpp">
       <Filter>Header Files\Algebraic</Filter>
     </ClInclude>
     <ClInclude Include="Ranges\Utility.hpp">

@@ -12,7 +12,7 @@ namespace myakish::ranges
     struct FindElementFunctor : functional::ExtensionMethod
     {
         template<std::ranges::input_range Range, class Type, class Projection = std::identity>
-        algebraic::Variant<std::nullopt_t, std::ranges::range_reference_t<Range>> operator()(Range&& range, const Type& value, Projection projection = {}) const
+        algebraic::Optional<std::ranges::range_reference_t<Range>> operator()(Range&& range, const Type& value, Projection projection = {}) const
         {
             auto it = std::ranges::find(range, value, projection);
             if (it != std::ranges::end(range)) return *it;
@@ -24,7 +24,7 @@ namespace myakish::ranges
     struct FindElementIfFunctor : functional::ExtensionMethod
     {
         template<std::ranges::input_range Range, class Predicate, class Projection = std::identity>
-        algebraic::Variant<std::nullopt_t, std::ranges::range_reference_t<Range>> operator()(Range&& range, const Predicate& predicate, Projection projection = {}) const
+        algebraic::Optional<std::ranges::range_reference_t<Range>> operator()(Range&& range, const Predicate& predicate, Projection projection = {}) const
         {
             auto it = std::ranges::find_if(range, predicate, projection);
             if (it != std::ranges::end(range)) return *it;
@@ -33,18 +33,6 @@ namespace myakish::ranges
     };
     inline constexpr FindElementIfFunctor FindElementIf;
 
-
-    struct FindElementOrFunctor : functional::ExtensionMethod
-    {
-        template<std::ranges::input_range Range, class OrElse, class Predicate, class Projection = std::identity>
-        std::ranges::range_value_t<Range> operator()(Range&& range, OrElse&& orElse, const Predicate& predicate, Projection projection = {}) const
-        {
-            auto it = std::ranges::find_if(range, predicate, projection);
-            if (it != std::ranges::end(range)) return *it;
-            else return std::forward<OrElse>(orElse);
-        }
-    };
-    inline constexpr FindElementOrFunctor FindElementOr;
 
 
     template<std::ranges::range Underlying>

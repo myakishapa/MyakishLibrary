@@ -13,7 +13,6 @@
 #include <MyakishLibrary/Meta.hpp>
 
 #include <MyakishLibrary/Algebraic/Algebraic.hpp>
-#include <MyakishLibrary/Algebraic/Standard.hpp>
 
 
 namespace myakish::binary_serialization_suite
@@ -393,7 +392,7 @@ namespace myakish::binary_serialization_suite
 
     
     
-    template<ParserConcept Parser>
+    template<ParserConcept Parser, typename StoredSize = myakish::Size>
     struct RepeatParser : ParserBase
     {
         Parser parser;
@@ -404,7 +403,7 @@ namespace myakish::binary_serialization_suite
         template<streams::InputStream Stream, std::ranges::range AttributeRange>
         void operator()(Stream&& in, AttributeRange&& attribute) const
         {
-            auto size = Size.Parse(in);
+            auto size = Trivial<StoredSize>.Parse(in);
 
             auto Parse = [&](auto _)
                 {
@@ -413,16 +412,28 @@ namespace myakish::binary_serialization_suite
                     return synthesized;
                 };
 
-            attribute = std::views::iota(0, size) | std::views::transform(Parse) | std::ranges::to<std::remove_cvref_t<AttributeRange>>();
+            attribute = std::views::iota(StoredSize(0), size) | std::views::transform(Parse) | std::ranges::to<std::remove_cvref_t<AttributeRange>>();
         }
 
         template<streams::OutputStream Stream, std::ranges::range AttributeRange>
         void operator()(Stream&& out, AttributeRange&& attribute) const
         {
-            out | streams::WriteAs<myakish::Size>[std::ranges::size(attribute)];
+            out | streams::WriteAs<StoredSize>[std::ranges::size(attribute)];
 
             std::ranges::for_each(attribute, functional::Invoke[parser, out, functional::Arg<0>]);
         }
     };
+    template<typename StoredSize>
+    struct RepeatFunctor : functional::ExtensionMethod
+    {
+        template<ParserConcept Parser>
+        constexpr auto operator()(Parser parser) const
+        {
+            return RepeatParser<Parser, StoredSize>(std::move(parser));
+        }
+    };
+    template<typename StoredSize = myakish::Size>
+    inline constexpr RepeatFunctor<StoredSize> Repeat;
+
 
 }
