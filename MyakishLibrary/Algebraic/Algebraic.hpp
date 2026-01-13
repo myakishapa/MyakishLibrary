@@ -182,9 +182,6 @@ namespace myakish::algebraic
     template<typename ...Types>
     using Tuple = std::tuple<functional::WrappedT<Types&&>...>;
 
-    template<typename Type>
-    using Optional = std::optional<functional::WrappedT<Type&&>>;
-
 
     template<meta::InstanceOfConcept<std::variant> Variant>
     struct EnableAlgebraicFor<Variant> : std::true_type {};
@@ -264,7 +261,7 @@ namespace myakish::algebraic
 
 
 
-    struct ForwardAsTupleFunctor
+    struct ForwardAsTupleFunctor : functional::ExtensionMethod
     {
         template<typename ...Args>
         constexpr auto operator()(Args&&... args) const
@@ -409,7 +406,7 @@ namespace myakish::algebraic
         {
             auto Func = [&]<typename Arg>(Arg&& arg) -> Alternative
             {
-                if constexpr (Comparator<Arg&&, Alternative>::value) return std::forward<Arg>(arg);
+                if constexpr (Comparator<Arg&&, Alternative>::value) return static_cast<Alternative>(arg);
                 else std::unreachable();
             };
 
@@ -446,7 +443,7 @@ namespace myakish::algebraic
         {
             auto Func = [&]<typename Arg>(Arg && arg) -> Alternative
             {
-                if constexpr (Comparator<Arg&&, Alternative>::value) return std::forward<Arg>(arg);
+                if constexpr (Comparator<Arg&&, Alternative>::value) return static_cast<Alternative>(arg);
                 else return static_cast<Alternative>(orElse);
             };
 

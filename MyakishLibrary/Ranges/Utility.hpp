@@ -5,7 +5,7 @@
 #include <utility>
 
 #include <MyakishLibrary/Functional/ExtensionMethod.hpp>
-#include <MyakishLibrary/Algebraic/Algebraic.hpp>
+#include <MyakishLibrary/Algebraic/Optional.hpp>
 
 namespace myakish::ranges
 {

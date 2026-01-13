@@ -98,5 +98,8 @@
     <ClInclude Include="HvTree\Build.hpp">
       <Filter>Header Files\HvTree</Filter>
     </ClInclude>
+    <ClInclude Include="Algebraic\Optional.hpp">
+      <Filter>Header Files\Algebraic</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -26,6 +26,7 @@
 #include <MyakishLibrary/BinarySerializationSuite/BinarySerializationSuite.hpp>
 
 #include <MyakishLibrary/Algebraic/Algebraic.hpp>
+#include <MyakishLibrary/Algebraic/Optional.hpp>
 
 
 namespace st2 = myakish::streams;
@@ -472,6 +473,44 @@ int main()
 
             auto r1 = var  | alg::FirstMap[intToStr, hof::Identity] | alg::Maybe<std::string>["Empty"];
             auto r2 = var2 | alg::FirstMap[intToStr, hof::Identity] | alg::Maybe<std::string>["Empty"];
+
+            std::println();
+        }
+
+        //IntoOptional
+        {
+            std::optional<int> var = 1337;
+
+            auto intToStr = [](int i) { return std::format("{}", i); };
+
+            auto r1 = var | alg::FirstMap[intToStr, hof::Identity] | alg::IntoOptional;
+
+
+            std::string str = "apa";
+
+            alg::Variant<std::string&&, const std::string&, std::nullopt_t> var2 = str;
+
+            auto r2 = var2 | alg::IntoOptional;
+
+
+            alg::Variant<const std::string&, const std::string&, std::nullopt_t> var3(std::in_place_index<0>, str);
+
+            auto r3 = var3 | alg::IntoOptional;
+
+
+            std::println();
+        }
+
+
+        //Optional
+        {
+            std::optional<int> var = 1337;
+
+            auto intToStr = [](int i) { return std::format("{}", i); };
+
+            auto r1 = var | alg::OptMap[intToStr];
+
+
 
             std::println();
         }
