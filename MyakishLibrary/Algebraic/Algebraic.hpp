@@ -851,6 +851,10 @@ namespace myakish::algebraic
             using Flattened = meta::Invoke<meta::Concat, ValuesOfValues>::type;
 
             using type = meta::QuotedInvoke<meta::Instantiate<Variant>, Flattened>::type;
+
+            //71357 6834 269919
+            //67977 9556 501181
+            //20395 5186 522203
         };
 
         template<SumConcept Type, typename ResultType = SumReturnType<Type&&>::type>
